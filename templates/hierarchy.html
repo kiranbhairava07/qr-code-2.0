@@ -277,11 +277,6 @@ td {
     color: var(--danger);
 }
 
-.actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
 
 .action-btn {
     background: none;
@@ -442,6 +437,38 @@ td {
     padding: 40px;
     color: var(--text-light);
 }
+
+.actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: #64748b; /* soft professional gray */
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.icon-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+}
+
+.icon-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+.icon-btn.delete:hover {
+    color: var(--danger);
+}
+
 
 .spinner {
     border: 3px solid var(--border);
@@ -713,7 +740,7 @@ td {
 </div>
 
 <script>
-const API = 'https://qr-code-2-0-22ky.onrender.com';
+const API = 'http://127.0.0.1:8000';
 let currentEditId = null;
 let regionsData = [];
 let clustersData = [];
@@ -812,10 +839,40 @@ function renderRegions(regions) {
             <td>${new Date(r.created_at).toLocaleDateString()}</td>
             <td>
                 <div class="actions">
-                    <button class="action-btn" onclick="editRegion(${r.id})">✏️</button>
-                    <button class="action-btn" onclick="toggleRegionStatus(${r.id}, ${r.is_active})">✔️</button>
-                    <button class="action-btn danger" onclick="deleteRegion(${r.id})">🗑️</button>
+                    <!-- Edit -->
+                    <button class="icon-btn" title="Edit Region" onclick="editRegion(${r.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Activate / Deactivate -->
+                    <button class="icon-btn" 
+                        title="${r.is_active ? 'Deactivate Region' : 'Activate Region'}"
+                        onclick="toggleRegionStatus(${r.id}, ${r.is_active})">
+                        ${r.is_active ? `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="6" y="4" width="4" height="16"/>
+                            <rect x="14" y="4" width="4" height="16"/>
+                        </svg>` : `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>`}
+                    </button>
+
+                    <!-- Delete -->
+                    <button class="icon-btn delete" title="Delete Region" onclick="deleteRegion(${r.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-2 14H7L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4h6v2"/>
+                        </svg>
+                    </button>
+
                 </div>
+
             </td>
         </tr>`;
     }).join('');
@@ -955,10 +1012,41 @@ function renderClusters(clusters) {
             <td><span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
             <td>
                 <div class="actions">
-                    <button class="action-btn" onclick="editCluster(${c.id})">✏️</button>
-                    <button class="action-btn" onclick="toggleClusterStatus(${c.id}, ${c.is_active})">✔️</button>
-                    <button class="action-btn danger" onclick="deleteCluster(${c.id})">🗑️</button>
+
+                    <!-- Edit -->
+                    <button class="icon-btn" title="Edit Cluster" onclick="editCluster(${c.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Activate / Deactivate -->
+                    <button class="icon-btn" 
+                        title="${c.is_active ? 'Deactivate Cluster' : 'Activate Cluster'}"
+                        onclick="toggleClusterStatus(${c.id}, ${c.is_active})">
+                        ${c.is_active ? `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="6" y="4" width="4" height="16"/>
+                            <rect x="14" y="4" width="4" height="16"/>
+                        </svg>` : `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>`}
+                    </button>
+
+                    <!-- Delete -->
+                    <button class="icon-btn delete" title="Delete Cluster" onclick="deleteCluster(${c.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-2 14H7L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4h6v2"/>
+                        </svg>
+                    </button>
+
                 </div>
+
             </td>
         </tr>`;
     }).join('');
@@ -1111,10 +1199,39 @@ function renderBranches(branches) {
             <td><span class="badge ${b.is_active ? 'badge-active' : 'badge-inactive'}">${b.is_active ? 'Active' : 'Inactive'}</span></td>
             <td>
                 <div class="actions">
-                    <button class="action-btn" onclick="editBranch(${b.id})">✏️</button>
-                    <button class="action-btn" onclick="toggleBranchStatus(${b.id}, ${b.is_active})">✔️</button>
-                    <button class="action-btn danger" onclick="deleteBranch(${b.id})">🗑️</button>
-                </div>
+                    <!-- Edit -->
+                    <button class="icon-btn" title="Edit Branch" onclick="editBranch(${b.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Activate / Deactivate -->
+                    <button class="icon-btn" 
+                        title="${b.is_active ? 'Deactivate Branch' : 'Activate Branch'}"
+                        onclick="toggleBranchStatus(${b.id}, ${b.is_active})">
+                        ${b.is_active ? `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="6" y="4" width="4" height="16"/>
+                            <rect x="14" y="4" width="4" height="16"/>
+                        </svg>` : `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>`}
+                    </button>
+
+                    <!-- Delete -->
+                    <button class="icon-btn delete" title="Delete Branch" onclick="deleteBranch(${b.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-2 14H7L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4h6v2"/>
+                        </svg>
+                    </button>
+                    </div>
+
             </td>
         </tr>`;
     }).join('');

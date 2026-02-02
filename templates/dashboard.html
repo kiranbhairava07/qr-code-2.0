@@ -630,7 +630,7 @@ tbody tr:hover {
 
 <div class="header">
     <div class="header-content">
-        <div class="logo">📱 QR Manager</div>
+        <div class="logo">QR Manager</div>
         <div class="header-actions">
             <button class="btn btn-outline btn-sm" onclick="window.location.href='/hierarchy'">
                 Hierarchy Manager
@@ -780,7 +780,7 @@ tbody tr:hover {
             </div>
             <div class="form-group">
                 <label>Target URL *</label>
-                <textarea id="qrTargetUrl" placeholder="https://qr-code-2-0-22ky.onrender.com/social-links" required></textarea>
+                <textarea id="qrTargetUrl" placeholder="http://127.0.0.1:8000/social-links" required></textarea>
             </div>
         </div>
         <div class="modal-footer">
@@ -846,7 +846,7 @@ tbody tr:hover {
 </div>
 
 <script>
-const API = 'https://qr-code-2-0-22ky.onrender.com';
+const API = 'http://127.0.0.1:8000';
 let token = localStorage.getItem('token');
 let regions = [], clusters = [], branches = [], qrCodes = [], allQRCodes = [];
 let currentQR = null, deleteQRId = null, editMode = false;
@@ -1078,6 +1078,16 @@ function renderTable() {
                 <td>
                     <div class="action-btns">
 
+                        <!-- View Analytics -->
+                        <button class="icon-btn" title="View Analytics" onclick="viewAnalytics(${qr.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M3 3v18h18"/>
+                                <path d="M9 17V9"/>
+                                <path d="M13 17V5"/>
+                                <path d="M17 17v-3"/>
+                            </svg>
+                        </button>
+
                         <!-- View -->
                         <button class="icon-btn" title="View" onclick="viewQR(${qr.id})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1151,7 +1161,7 @@ function showCreateModal() {
     currentQR = null;
     document.getElementById('modalTitle').textContent = 'Create QR Code';
     document.getElementById('qrCode').value = '';
-    document.getElementById('qrTargetUrl').value = 'https://qr-code-2-0-22ky.onrender.com/social-links';
+    document.getElementById('qrTargetUrl').value = 'http://127.0.0.1:8000/social-links';
     document.getElementById('qrRegion').value = '';
     document.getElementById('qrCluster').innerHTML = '<option value="">Select Cluster</option>';
     document.getElementById('qrBranch').innerHTML = '<option value="">Select Branch</option>';

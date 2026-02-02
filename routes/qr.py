@@ -9,7 +9,7 @@ import logging
 
 from database import get_db
 from auth import get_current_user
-from models import User, QRCode, QRScan
+from models import User, QRCode, QRScan, Branch
 from schemas import QRCodeCreate, QRCodeUpdate, QRCodeResponse, QRAnalytics, QRScanResponse
 from config import settings
 from datetime import datetime, timedelta, date, time
@@ -34,31 +34,33 @@ async def list_qr_codes(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get all QR codes with scan counts (OPTIMIZED - Single Query).
-    Supports pagination for better performance.
+    Get all QR codes with scan counts and branch name.
+    OPTIMIZED: Single query with JOIN + GROUP BY.
     """
     try:
-        # OPTIMIZED: Single query with LEFT JOIN and GROUP BY
         result = await db.execute(
             select(
                 QRCode,
-                func.coalesce(func.count(QRScan.id), 0).label('scan_count')
+                func.coalesce(func.count(QRScan.id), 0).label("scan_count"),
+                Branch.name.label("branch_name")
             )
+            .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
             .where(QRCode.created_by == current_user.id)
-            .group_by(QRCode.id)
+            .group_by(QRCode.id, Branch.name)
             .order_by(QRCode.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
-        
+
         rows = result.all()
-        
         response_list = []
-        for qr, scan_count in rows:
+
+        for qr, scan_count, branch_name in rows:
             qr_dict = {
                 "id": qr.id,
                 "code": qr.code,
+                "name": branch_name,  # ✅ Using branch name as QR name
                 "target_url": qr.target_url,
                 "branch_id": qr.branch_id,
                 "is_active": qr.is_active,
@@ -68,13 +70,14 @@ async def list_qr_codes(
                 "scan_count": scan_count
             }
             response_list.append(qr_dict)
-        
+
         logger.info(f"Listed {len(response_list)} QR codes for user {current_user.id}")
         return response_list
-        
+
     except Exception as e:
         logger.error(f"Error listing QR codes: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch QR codes")
+
 
 
 # ============================================
@@ -140,35 +143,45 @@ async def get_qr_code(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get a single QR code by ID with scan count (OPTIMIZED).
+    Get a single QR code by ID with scan count and branch name.
+    OPTIMIZED: Single query with JOIN + GROUP BY.
     """
     try:
-        # OPTIMIZED: Single query with scan count
         result = await db.execute(
             select(
                 QRCode,
-                func.coalesce(func.count(QRScan.id), 0).label('scan_count')
+                func.coalesce(func.count(QRScan.id), 0).label("scan_count"),
+                Branch.name.label("branch_name")  # 👈 Fetch branch name
             )
+            .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
             .where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
-            .group_by(QRCode.id)
+            .group_by(QRCode.id, Branch.name)
         )
-        
+
         row = result.one_or_none()
-        
+
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="QR code not found"
             )
-        
-        qr_code, scan_count = row
-        
+
+        qr_code, scan_count, branch_name = row
+
         return {
-            **qr_code.__dict__,
+            "id": qr_code.id,
+            "code": qr_code.code,
+            "name": branch_name,  # ✅ Required field now present
+            "target_url": qr_code.target_url,
+            "branch_id": qr_code.branch_id,
+            "is_active": qr_code.is_active,
+            "created_at": qr_code.created_at,
+            "updated_at": qr_code.updated_at,
+            "created_by": qr_code.created_by,
             "scan_count": scan_count
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

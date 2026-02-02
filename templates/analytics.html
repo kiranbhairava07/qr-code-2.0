@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics - GK Co-operative</title>
+<link rel="icon" type="image/png" href="static/social/gk.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+    --primary: #3b82f6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+.header {
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--gray-600);
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid var(--gray-200);
+    color: var(--gray-700);
+}
+
+.btn-outline:hover {
+    background: var(--gray-50);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.filters {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--gray-700);
+}
+
+.filter-group select,
+.filter-group input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.stat-value.primary { color: var(--primary); }
+.stat-value.success { color: var(--success); }
+.stat-value.warning { color: var(--warning); }
+
+.stat-change {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+.region-block {
+    margin-bottom: 24px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.region-header {
+    background: var(--gray-50);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.region-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.region-stats {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+}
+
+.region-stat strong {
+    font-size: 18px;
+    display: block;
+}
+
+.cluster-block {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.cluster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.cluster-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.cluster-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.branch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.branch-card {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.branch-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.branch-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-new {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-returning {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray-600);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-600);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-content">
+        <div class="logo">📊 Analytics Dashboard</div>
+        <div class="header-actions">
+            <a href="/dashboard" class="btn btn-outline btn-sm">Dashboard</a>
+            <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Analytics Overview</h1>
+        <p class="page-subtitle">Track performance across regions, clusters, and branches</p>
+    </div>
+
+    <div class="filters">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>View Level</label>
+                <select id="viewLevel" onchange="handleViewChange()">
+                    <option value="all">All Regions</option>
+                    <option value="region">Single Region</option>
+                    <option value="cluster">Single Cluster</option>
+                    <option value="branch">Single Branch</option>
+                </select>
+            </div>
+            <div class="filter-group" id="regionGroup" style="display:none;">
+                <label>Region</label>
+                <select id="regionSelect" onchange="handleRegionChange()">
+                    <option value="">Select Region</option>
+                </select>
+            </div>
+            <div class="filter-group" id="clusterGroup" style="display:none;">
+                <label>Cluster</label>
+                <select id="clusterSelect" onchange="handleClusterChange()">
+                    <option value="">Select Cluster</option>
+                </select>
+            </div>
+            <div class="filter-group" id="branchGroup" style="display:none;">
+                <label>Branch</label>
+                <select id="branchSelect">
+                    <option value="">Select Branch</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Start Date</label>
+                <input type="date" id="startDate">
+            </div>
+            <div class="filter-group">
+                <label>End Date</label>
+                <input type="date" id="endDate">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-outline btn-sm" onclick="resetFilters()">Reset</button>
+            <button class="btn btn-primary btn-sm" onclick="loadAnalytics()">Apply</button>
+        </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-label">Total QR Scans</div>
+            <div class="stat-value primary" id="totalScans">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Social Clicks</div>
+            <div class="stat-value warning" id="totalClicks">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Combined Total</div>
+            <div class="stat-value success" id="totalCombined">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">New Users</div>
+            <div class="stat-value success" id="newUsers">0</div>
+            <div class="stat-change" id="newPercent">0% of total</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">New vs Returning Users</div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="nvChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header" id="detailsTitle">Detailed Breakdown</div>
+        <div class="card-body" id="detailsBody">
+            <div class="loading">Loading analytics...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let token = localStorage.getItem('token');
+let regions = [], clusters = [], branches = [];
+let chart = null;
+
+if (!token) window.location.href = '/';
+
+async function api(endpoint, options = {}) {
+    const res = await fetch(`${API}${endpoint}`, {
+        ...options,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        }
+    });
+    
+    if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+        return;
+    }
+    
+    return res.json();
+}
+
+async function init() {
+    const user = await api('/auth/me');
+    if (!user.is_super_admin) {
+        alert('Access denied');
+        logout();
+        return;
+    }
+    
+    regions = await api('/hierarchy/regions');
+    clusters = await api('/hierarchy/clusters');
+    branches = await api('/hierarchy/branches');
+    
+    populateSelects();
+    await loadAnalytics();
+}
+
+function populateSelects() {
+    document.getElementById('regionSelect').innerHTML = '<option value="">Select Region</option>' +
+        regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+function handleViewChange() {
+    const level = document.getElementById('viewLevel').value;
+    
+    document.getElementById('regionGroup').style.display = 
+        ['region', 'cluster', 'branch'].includes(level) ? 'block' : 'none';
+    document.getElementById('clusterGroup').style.display = 
+        ['cluster', 'branch'].includes(level) ? 'block' : 'none';
+    document.getElementById('branchGroup').style.display = 
+        level === 'branch' ? 'block' : 'none';
+}
+
+function handleRegionChange() {
+    const regionId = document.getElementById('regionSelect').value;
+    const regionClusters = clusters.filter(c => c.region_id == regionId);
+    
+    document.getElementById('clusterSelect').innerHTML = '<option value="">Select Cluster</option>' +
+        regionClusters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    
+    document.getElementById('branchSelect').innerHTML = '<option value="">Select Branch</option>';
+}
+
+function handleClusterChange() {
+    const clusterId = document.getElementById('clusterSelect').value;
+    const clusterBranches = branches.filter(b => b.cluster_id == clusterId);
+    
+    document.getElementById('branchSelect').innerHTML = '<option value="">Select Branch</option>' +
+        clusterBranches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+async function loadAnalytics() {
+    const level = document.getElementById('viewLevel').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    let params = '';
+    if (startDate) params += `&start_date=${startDate}`;
+    if (endDate) params += `&end_date=${endDate}`;
+    
+    document.getElementById('detailsBody').innerHTML = '<div class="loading">Loading...</div>';
+    
+    if (level === 'all') {
+        const data = await api(`/analytics/regions?include_details=true${params}`);
+        renderStats(aggregateRegions(data));
+        renderAllRegions(data);
+    } else if (level === 'region') {
+        const regionId = document.getElementById('regionSelect').value;
+        if (!regionId) {
+            alert('Please select a region');
+            return;
+        }
+        const data = await api(`/analytics/regions?include_details=true${params}`);
+        const region = data.find(r => r.region_id == regionId);
+        renderStats(region);
+        renderRegion(region);
+    } else if (level === 'cluster') {
+        const clusterId = document.getElementById('clusterSelect').value;
+        if (!clusterId) {
+            alert('Please select a cluster');
+            return;
+        }
+        const data = await api(`/analytics/clusters/${clusterId}?include_branches=true${params}`);
+        renderStats(data);
+        renderCluster(data);
+    } else if (level === 'branch') {
+        const branchId = document.getElementById('branchSelect').value;
+        if (!branchId) {
+            alert('Please select a branch');
+            return;
+        }
+        const data = await api(`/analytics/branches/${branchId}?${params}`);
+        renderStats(data);
+        renderBranch(data);
+    }
+}
+
+function aggregateRegions(regions) {
+    return {
+        total_qr_scans: regions.reduce((sum, r) => sum + r.total_qr_scans, 0),
+        total_social_clicks: regions.reduce((sum, r) => sum + r.total_social_clicks, 0),
+        combined_total: regions.reduce((sum, r) => sum + r.combined_total, 0),
+        new_vs_returning: {
+            new_users: regions.reduce((sum, r) => sum + r.new_vs_returning.new_users, 0),
+            returning_users: regions.reduce((sum, r) => sum + r.new_vs_returning.returning_users, 0),
+            new_percentage: 0,
+            returning_percentage: 0
+        }
+    };
+}
+
+function renderStats(data) {
+    document.getElementById('totalScans').textContent = data.total_qr_scans.toLocaleString();
+    document.getElementById('totalClicks').textContent = data.total_social_clicks.toLocaleString();
+    document.getElementById('totalCombined').textContent = data.combined_total.toLocaleString();
+    document.getElementById('newUsers').textContent = data.new_vs_returning.new_users.toLocaleString();
+    
+    const total = data.new_vs_returning.new_users + data.new_vs_returning.returning_users;
+    const pct = total > 0 ? ((data.new_vs_returning.new_users / total) * 100).toFixed(1) : 0;
+    document.getElementById('newPercent').textContent = `${pct}% of total`;
+    
+    if (chart) chart.destroy();
+    
+    chart = new Chart(document.getElementById('nvChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['New Users', 'Returning Users'],
+            datasets: [{
+                data: [data.new_vs_returning.new_users, data.new_vs_returning.returning_users],
+                backgroundColor: ['#10b981', '#3b82f6']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+function renderAllRegions(data) {
+    document.getElementById('detailsTitle').textContent = `All Regions (${data.length})`;
+    
+    const html = data.map(region => `
+        <div class="region-block">
+            <div class="region-header">
+                <div class="region-title">${region.region_name}</div>
+                <div class="region-stats">
+                    <div><strong>${region.total_qr_scans}</strong> QR</div>
+                    <div><strong>${region.total_social_clicks}</strong> Social</div>
+                    <div><strong>${region.combined_total}</strong> Total</div>
+                </div>
+            </div>
+            ${region.clusters.map(cluster => `
+                <div class="cluster-block">
+                    <div class="cluster-header">
+                        <div class="cluster-title">${cluster.cluster_name}</div>
+                        <div class="cluster-stats">
+                            <span>QR: ${cluster.total_qr_scans}</span>
+                            <span>Social: ${cluster.total_social_clicks}</span>
+                            <span>Total: ${cluster.combined_total}</span>
+                        </div>
+                    </div>
+                    <div class="branch-grid">
+                        ${cluster.branches.map(branch => `
+                            <div class="branch-card">
+                                <div class="branch-name">${branch.branch_name}</div>
+                                <div class="branch-stats">
+                                    <span>QR: ${branch.total_qr_scans}</span>
+                                    <span>Social: ${branch.total_social_clicks}</span>
+                                </div>
+                                <div style="margin-top:6px;">
+                                    <span class="badge badge-new">${branch.new_vs_returning.new_percentage}% New</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+    
+    document.getElementById('detailsBody').innerHTML = html || '<div class="empty-state">No data</div>';
+}
+
+function renderRegion(region) {
+    document.getElementById('detailsTitle').textContent = region.region_name;
+    renderAllRegions([region]);
+}
+
+function renderCluster(cluster) {
+    document.getElementById('detailsTitle').textContent = cluster.cluster_name;
+    
+    const html = `
+        <div class="branch-grid">
+            ${cluster.branches.map(branch => `
+                <div class="branch-card">
+                    <div class="branch-name">${branch.branch_name}</div>
+                    <div class="branch-stats">
+                        <span>QR: ${branch.total_qr_scans}</span>
+                        <span>Social: ${branch.total_social_clicks}</span>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <span class="badge badge-new">New: ${branch.new_vs_returning.new_percentage}%</span>
+                        <span class="badge badge-returning">Ret: ${branch.new_vs_returning.returning_percentage}%</span>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    document.getElementById('detailsBody').innerHTML = html;
+}
+
+function renderBranch(branch) {
+    const branchObj = branches.find(b => b.id === branch.branch_id);
+    document.getElementById('detailsTitle').textContent = branch.branch_name;
+    
+    const html = `
+        <div style="max-width:600px;margin:0 auto;">
+            <div class="stat-card">
+                <div class="stat-label">QR Scans</div>
+                <div class="stat-value primary">${branch.total_qr_scans}</div>
+            </div>
+            <div class="stat-card" style="margin-top:16px;">
+                <div class="stat-label">Social Clicks</div>
+                <div class="stat-value warning">${branch.total_social_clicks}</div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('detailsBody').innerHTML = html;
+}
+
+function resetFilters() {
+    document.getElementById('viewLevel').value = 'all';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    handleViewChange();
+    loadAnalytics();
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+}
+
+init();
+</script>
+</body>
+</html>

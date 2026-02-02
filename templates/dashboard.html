@@ -780,7 +780,7 @@ tbody tr:hover {
             </div>
             <div class="form-group">
                 <label>Target URL *</label>
-                <textarea id="qrTargetUrl" placeholder="http://127.0.0.1:8000/social-links" required></textarea>
+                <textarea id="qrTargetUrl" placeholder="https://qr-code-2-0-22ky.onrender.com/social-links" required></textarea>
             </div>
         </div>
         <div class="modal-footer">
@@ -846,7 +846,7 @@ tbody tr:hover {
 </div>
 
 <script>
-const API = 'http://127.0.0.1:8000';
+const API = 'https://qr-code-2-0-22ky.onrender.com';
 let token = localStorage.getItem('token');
 let regions = [], clusters = [], branches = [], qrCodes = [], allQRCodes = [];
 let currentQR = null, deleteQRId = null, editMode = false;
@@ -1151,7 +1151,7 @@ function showCreateModal() {
     currentQR = null;
     document.getElementById('modalTitle').textContent = 'Create QR Code';
     document.getElementById('qrCode').value = '';
-    document.getElementById('qrTargetUrl').value = 'http://127.0.0.1:8000/social-links';
+    document.getElementById('qrTargetUrl').value = 'https://qr-code-2-0-22ky.onrender.com/social-links';
     document.getElementById('qrRegion').value = '';
     document.getElementById('qrCluster').innerHTML = '<option value="">Select Cluster</option>';
     document.getElementById('qrBranch').innerHTML = '<option value="">Select Branch</option>';

@@ -180,6 +180,7 @@ class RegionAnalytics(BaseModel):
     region_name: str
     total_qr_scans: int
     total_social_clicks: int
+    detailed_platform_breakdown: List[dict] = []
     combined_total: int
     new_vs_returning: NewVsReturning
     clusters: List[ClusterAnalytics] = []

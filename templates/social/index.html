@@ -33,8 +33,7 @@
         <p>Connect with friends and family</p>
       </a>
 
-      <a class="card" href="https://www.instagram.com/godavarikrishnasociety?igsh=NDA0c
-DdnejU1YWM2" target="_blank" rel="noopener noreferrer" data-platform="instagram">
+      <a class="card" href="https://www.instagram.com/godavarikrishnasociety?igsh=NDA0cDdnejU1YWM2" target="_blank" rel="noopener noreferrer" data-platform="instagram">
         <div class="icon instagram">
           <img src="/social-links/instagram.png" alt="Instagram">
         </div>
@@ -42,8 +41,7 @@ DdnejU1YWM2" target="_blank" rel="noopener noreferrer" data-platform="instagram"
         <p>Share photos and stories</p>
       </a>
 
-      <a class="card" href="https://youtube.com/@godavarikrishnaco-
-opsociet6591?si=lAsb2CVDz64m_fbc" target="_blank" rel="noopener noreferrer" data-platform="youtube">
+      <a class="card" href="https://youtube.com/@godavarikrishnaco-opsociet6591?si=lAsb2CVDz64m_fbc" target="_blank" rel="noopener noreferrer" data-platform="youtube">
         <div class="icon youtube">
           <img src="/social-links/youtube.png" alt="YouTube">
         </div>
@@ -79,8 +77,33 @@ opsociet6591?si=lAsb2CVDz64m_fbc" target="_blank" rel="noopener noreferrer" data
   </section>
 
   <script>
-    // Track social media clicks
+    // Track social media clicks with branch tracking
     const API = 'http://127.0.0.1:8000';
+    
+    // Get branch code from URL parameter (set by QR code redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const branchCode = urlParams.get('branch');
+    
+    // Generate session ID for new vs returning tracking
+    function generateSessionId() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('fingerprint', 2, 2);
+      const fingerprint = canvas.toDataURL();
+      
+      const data = navigator.userAgent + fingerprint + screen.width + screen.height;
+      let hash = 0;
+      for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash).toString(16);
+    }
+    
+    const sessionId = generateSessionId();
     
     document.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', async (e) => {
@@ -93,7 +116,11 @@ opsociet6591?si=lAsb2CVDz64m_fbc" target="_blank" rel="noopener noreferrer" data
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ platform })
+            body: JSON.stringify({ 
+              platform,
+              branch_code: branchCode,
+              session_id: sessionId
+            })
           });
         } catch (err) {
           console.log('Tracking failed:', err);

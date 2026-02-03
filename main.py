@@ -119,6 +119,10 @@ async def dashboard():
 async def analytics_page():
     return FileResponse("templates/analytics.html")
 
+@app.get("/hierarchy-analytics")
+async def hierarchy_analytics():
+    return FileResponse("templates/hierarchy-dashboard.html")
+
 @app.get("/hierarchy")
 async def hierarchy_page():
     """Serve the hierarchy management page"""

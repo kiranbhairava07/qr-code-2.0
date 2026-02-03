@@ -457,6 +457,48 @@ async def get_branch_analytics(
     return await get_branch_analytics_internal(db, branch, start_date, end_date)
 
 
+@router.get("/branches/{branch_id}/social-breakdown")
+async def get_branch_social_breakdown(
+    branch_id: int,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get social media platform breakdown for a specific branch"""
+    require_super_admin(current_user)
+    
+    result = await db.execute(select(Branch).where(Branch.id == branch_id))
+    branch = result.scalar_one_or_none()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    
+    query = select(
+        SocialClick.platform,
+        func.count(SocialClick.id).label('count')
+    ).where(SocialClick.branch_id == branch_id)
+    
+    if start_date:
+        try:
+            query = query.where(SocialClick.clicked_at >= datetime.fromisoformat(start_date))
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
+            query = query.where(SocialClick.clicked_at <= end_dt)
+        except ValueError:
+            pass
+    
+    query = query.group_by(SocialClick.platform).order_by(func.count(SocialClick.id).desc())
+    
+    result = await db.execute(query)
+    breakdown = [{"platform": row.platform, "count": row.count} for row in result.all()]
+    
+    return {"branch_id": branch_id, "branch_name": branch.name, "platform_breakdown": breakdown}
+
+
 # ============================================
 # SOCIAL MEDIA ANALYTICS
 # ============================================

@@ -1364,6 +1364,7 @@ async function loadAnalyticsForBranch(qrId) {
 
 function renderUserPieChart(data) {
     const pieCtx = document.getElementById('userPieChart');
+    
     if (!pieCtx) {
         console.warn('userPieChart canvas element not found');
         return;
@@ -1401,6 +1402,7 @@ function renderUserPieChart(data) {
         return;
     }
     
+    // Render Pie Chart
     charts.userPie = new Chart(pieCtx, {
         type: 'pie',
         data: {
@@ -1408,7 +1410,7 @@ function renderUserPieChart(data) {
             datasets: [{
                 data: [newUsers, returningUsers],
                 backgroundColor: ['#3b82f6', '#10b981'],
-                borderWidth: 1,
+                borderWidth: 2,
                 borderColor: '#ffffff'
             }]
         },
@@ -1417,11 +1419,12 @@ function renderUserPieChart(data) {
             maintainAspectRatio: true,
             plugins: {
                 legend: {
-                    position: 'right',
+                    position: 'bottom',
                     labels: {
-                        padding: 20,
+                        padding: 15,
                         usePointStyle: true,
-                        pointStyle: 'circle'
+                        pointStyle: 'circle',
+                        font: { size: 12 }
                     }
                 },
                 tooltip: {
@@ -1432,6 +1435,108 @@ function renderUserPieChart(data) {
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                             return `${label}: ${value} (${percentage}%)`;
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderSocialBarChart(platformBreakdown) {
+    const barCtx = document.getElementById('socialBarChart');
+    
+    if (!barCtx) {
+        console.warn('socialBarChart canvas element not found');
+        return;
+    }
+    
+    // Destroy existing chart if any
+    if (charts.socialBar) {
+        charts.socialBar.destroy();
+    }
+    
+    if (!platformBreakdown || platformBreakdown.length === 0) {
+        charts.socialBar = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: ['No Data'],
+                datasets: [{
+                    data: [0],
+                    backgroundColor: ['#e2e8f0']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    y: { display: false },
+                    x: { display: false }
+                }
+            }
+        });
+        return;
+    }
+    
+    const platformColors = {
+        'facebook': '#1877F2',
+        'instagram': '#E4405F',
+        'twitter': '#1DA1F2',
+        'youtube': '#FF0000',
+        'whatsapp': '#25D366',
+        'threads': '#000000'
+    };
+    
+    const labels = platformBreakdown.map(p => p.platform.charAt(0).toUpperCase() + p.platform.slice(1));
+    const data = platformBreakdown.map(p => p.count);
+    const colors = platformBreakdown.map(p => platformColors[p.platform.toLowerCase()] || '#6B7280');
+    
+    charts.socialBar = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Clicks',
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 0,
+                borderRadius: 8,
+                barPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Clicks: ${context.raw}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        font: { size: 11 }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: { size: 11 }
                     }
                 }
             }
@@ -1559,36 +1664,20 @@ function renderBranchAnalytics(data, qrId) {
         <div class="user-composition-section" style="margin-bottom: 20px;">
             <div class="chart-section">
                 <div class="section-header">
-                    <div class="section-title">User Composition</div>
-                    <div class="section-subtitle">New vs Returning Users</div>
+                    <div class="section-title">Analytics Overview</div>
+                    <div class="section-subtitle">User behavior and social engagement</div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
-                    <div style="flex: 1; height: 300px;">
-                        <canvas id="userPieChart"></canvas>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                    <div style="background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 16px; text-align: center;">User Composition</div>
+                        <div style="height: 280px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="userPieChart"></canvas>
+                        </div>
                     </div>
-                    <div style="flex: 0 0 250px;">
-                        <div class="user-stats">
-                            <div class="user-stat-row">
-                                <div class="user-stat-label">
-                                    <div class="legend-dot" style="background:#3b82f6;"></div>
-                                    New Users
-                                </div>
-                                <div class="user-stat-value">${data.branch_stats?.new_vs_returning?.new_users || 0}</div>
-                            </div>
-                            <div class="user-stat-row">
-                                <div class="user-stat-label">
-                                    <div class="legend-dot" style="background:#10b981;"></div>
-                                    Returning Users
-                                </div>
-                                <div class="user-stat-value">${data.branch_stats?.new_vs_returning?.returning_users || 0}</div>
-                            </div>
-                            <div class="user-stat-row">
-                                <div class="user-stat-label">
-                                    <div class="legend-dot" style="background:#ef4444;"></div>
-                                    Combined Total
-                                </div>
-                                <div class="user-stat-value">${data.branch_stats?.combined_total || 0}</div>
-                            </div>
+                    <div style="background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 16px; text-align: center;">Social Media Platforms</div>
+                        <div style="height: 280px;">
+                            <canvas id="socialBarChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1648,6 +1737,18 @@ function renderBranchAnalytics(data, qrId) {
                             `;
                         }).join('');
                     })()}
+                </div>
+            </div>
+        </div>
+
+        <div class="branch-charts" style="margin-top: 20px;">
+            <div class="chart-section" style="grid-column: 1 / -1;">
+                <div class="section-header">
+                    <div class="section-title">Social Media Platform Breakdown</div>
+                    <div class="section-subtitle">Click distribution by platform</div>
+                </div>
+                <div id="socialPlatformChart">
+                    <div style="text-align: center; padding: 20px; color: var(--muted);">Loading social data...</div>
                 </div>
             </div>
         </div>
@@ -1730,8 +1831,129 @@ function renderBranchAnalytics(data, qrId) {
     setTimeout(() => {
         renderUserPieChart(data);
     }, 100);
+    
+    // Load and render social media breakdown
+    setTimeout(() => {
+        loadSocialMediaBreakdown(selectedBranch.id, data.startDate, data.endDate);
+    }, 150);
 }
 
+
+async function loadSocialMediaBreakdown(branchId, startDate, endDate) {
+    try {
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        const url = `${API}/analytics/branches/${branchId}/social-breakdown?${params.toString()}`;
+        
+        const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load social data: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Render both the bar chart AND the detailed breakdown
+        renderSocialBarChart(data.platform_breakdown || []);
+        renderSocialMediaChart(data.platform_breakdown || []);
+        
+    } catch (err) {
+        console.error('Error loading social media breakdown:', err);
+        renderSocialBarChart([]);
+        document.getElementById('socialPlatformChart').innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--muted);">
+                No social media data available
+            </div>
+        `;
+    }
+}
+
+function renderSocialMediaChart(platformBreakdown) {
+    const container = document.getElementById('socialPlatformChart');
+    
+    if (!platformBreakdown || platformBreakdown.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--muted);">
+                <div style="font-size: 48px; margin-bottom: 16px;"></div>
+                <div style="font-size: 16px; font-weight: 500; margin-bottom: 8px;">No Social Media Clicks Yet</div>
+                <div style="font-size: 14px;">Social media interactions will appear here once users start clicking.</div>
+            </div>
+        `;
+        return;
+    }
+    
+    const totalClicks = platformBreakdown.reduce((sum, p) => sum + p.count, 0);
+    const maxCount = Math.max(...platformBreakdown.map(p => p.count));
+    
+    // Platform colors
+    const platformColors = {
+        'facebook': '#1877F2',
+        'instagram': '#E4405F',
+        'twitter': '#1DA1F2',
+        'youtube': '#FF0000',
+        'whatsapp': '#25D366',
+        'threads': '#000000',
+        'default': '#6B7280'
+    };
+    
+    const getPlatformIcon = (platform) => {
+        const icons = {
+            'facebook': '👥',
+            'instagram': '📸',
+            'twitter': '🐦',
+            'youtube': '▶️',
+            'whatsapp': '💬',
+            'threads': '🧵'
+        };
+        return icons[platform.toLowerCase()] || '🔗';
+    };
+    
+    const html = `
+        <div style="padding: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                ${platformBreakdown.map(platform => {
+                    const percentage = ((platform.count / totalClicks) * 100).toFixed(1);
+                    const barWidth = (platform.count / maxCount) * 100;
+                    const platformKey = platform.platform.toLowerCase();
+                    const color = platformColors[platformKey] || platformColors['default'];
+                    const icon = getPlatformIcon(platform.platform);
+                    
+                    return `
+                        <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 24px;">${icon}</span>
+                                    <span style="font-weight: 600; font-size: 15px; color: var(--text); text-transform: capitalize;">${platform.platform}</span>
+                                </div>
+                                <span style="font-weight: 700; font-size: 18px; color: ${color};">${platform.count}</span>
+                            </div>
+                            
+                            <div style="background: var(--bg); border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 8px;">
+                                <div style="background: ${color}; height: 100%; width: ${barWidth}%; transition: width 0.5s ease;"></div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 13px; color: var(--muted);">${percentage}% of total</span>
+                                <span style="font-size: 12px; padding: 4px 8px; background: ${color}20; color: ${color}; border-radius: 6px; font-weight: 600;">${((platform.count / totalClicks) * 100).toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div style="margin-top: 20px; padding: 16px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; text-align: center;">
+                <span style="font-size: 14px; color: var(--muted);">Total Social Media Clicks: </span>
+                <span style="font-size: 18px; font-weight: 700; color: var(--primary);">${totalClicks}</span>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
 function showLoading(){
     document.getElementById('loadingOverlay').classList.add('show');
 }

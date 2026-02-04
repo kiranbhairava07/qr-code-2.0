@@ -10,6 +10,10 @@ class RegionCreate(BaseModel):
     name: str = Field(min_length=3, max_length=100)
     code: str = Field(min_length=2, max_length=20)
 
+class RegionUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    code: Optional[str] = Field(None, min_length=2, max_length=20)
+    is_active: Optional[bool] = None
 
 class RegionResponse(BaseModel):
     id: int
@@ -29,6 +33,10 @@ class ClusterCreate(BaseModel):
     code: str = Field(min_length=2, max_length=20)
     region_id: int
 
+class ClusterUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    code: Optional[str] = Field(None, min_length=2, max_length=20)
+    is_active: Optional[bool] = None
 
 class ClusterResponse(BaseModel):
     id: int
@@ -50,6 +58,11 @@ class BranchCreate(BaseModel):
     location: Optional[str] = Field(None, max_length=200)
     cluster_id: int
 
+class BranchUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    code: Optional[str] = Field(None, min_length=2, max_length=20)
+    location: Optional[str] = Field(None, max_length=200)
+    is_active: Optional[bool] = None
 
 class BranchResponse(BaseModel):
     id: int

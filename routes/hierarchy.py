@@ -5,9 +5,9 @@ from typing import List
 
 from database import get_db
 from schemas import (
-    RegionCreate, RegionResponse,
+    BranchUpdate, ClusterUpdate, RegionCreate, RegionResponse,
     ClusterCreate, ClusterResponse,
-    BranchCreate, BranchResponse
+    BranchCreate, BranchResponse, RegionUpdate
 )
 from auth import get_current_user
 from models import User, Region, Cluster, Branch
@@ -64,6 +64,34 @@ async def create_region(
     await db.refresh(new_region)
     return new_region
 
+@router.put("/regions/{region_id}", response_model=RegionResponse)
+async def update_region(
+    region_id: int,
+    region_update: RegionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update region (Super Admin only)"""
+    require_super_admin(current_user)
+    
+    result = await db.execute(
+        select(Region).where(Region.id == region_id)
+    )
+    region = result.scalar_one_or_none()
+    
+    if not region:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Region not found"
+        )
+    
+    region.name = region_update.name
+    region.code = region_update.code
+    
+    await db.commit()
+    await db.refresh(region)
+    return region
+
 
 # ============================================
 # CLUSTER ROUTES
@@ -114,6 +142,34 @@ async def create_cluster(
     await db.refresh(new_cluster)
     return new_cluster
 
+@router.patch("/clusters/{cluster_id}", response_model=ClusterResponse)
+async def update_cluster(
+    cluster_id: int,
+    cluster_update: ClusterUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update cluster (Super Admin only)"""
+    require_super_admin(current_user)
+    
+    result = await db.execute(
+        select(Cluster).where(Cluster.id == cluster_id)
+    )
+    cluster = result.scalar_one_or_none()
+    
+    if not cluster:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cluster not found"
+        )
+    
+    cluster.name = cluster_update.name
+    cluster.code = cluster_update.code
+    cluster.region_id = cluster_update.region_id
+    
+    await db.commit()
+    await db.refresh(cluster)
+    return cluster
 
 # ============================================
 # BRANCH ROUTES
@@ -169,11 +225,10 @@ async def create_branch(
     await db.refresh(new_branch)
     return new_branch
 
-
 @router.patch("/branches/{branch_id}", response_model=BranchResponse)
 async def update_branch(
     branch_id: int,
-    branch_update: BranchCreate,
+    branch_update: BranchUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -194,7 +249,6 @@ async def update_branch(
     branch.name = branch_update.name
     branch.code = branch_update.code
     branch.location = branch_update.location
-    branch.cluster_id = branch_update.cluster_id
     
     await db.commit()
     await db.refresh(branch)

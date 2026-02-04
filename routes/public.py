@@ -131,28 +131,25 @@ async def redirect_qr(
         const TARGET_URL = "{redirect_url}";
         const API = "{settings.BASE_URL}";
         
-        // Generate session ID from browser fingerprint
-        function generateSessionId() {{
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'top';
-            ctx.font = '14px Arial';
-            ctx.fillText('fingerprint', 2, 2);
-            const fingerprint = canvas.toDataURL();
-            
-            const data = navigator.userAgent + fingerprint + screen.width + screen.height;
-            let hash = 0;
-            for (let i = 0; i < data.length; i++) {{
-                const char = data.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
+        // FIXED: Use localStorage for consistent session ID
+        function getSessionId() {{
+            let sessionId = localStorage.getItem('qr_session_id');
+            if (!sessionId) {{
+                sessionId = generateSessionId();
+                localStorage.setItem('qr_session_id', sessionId);
             }}
-            return Math.abs(hash).toString(16);
+            return sessionId;
+        }}
+        
+        function generateSessionId() {{
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 15);
+            return timestamp + random;
         }}
         
         async function logScan(lat, lon, accuracy) {{
             const userAgent = navigator.userAgent;
-            const sessionId = generateSessionId();
+            const sessionId = getSessionId();
             
             try {{
                 await fetch(`${{API}}/api/scan-log`, {{

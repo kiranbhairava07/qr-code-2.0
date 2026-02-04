@@ -131,29 +131,40 @@ async def redirect_qr(
         const TARGET_URL = "{redirect_url}";
         const API = "{settings.BASE_URL}";
         
-        // Generate session ID from browser fingerprint
-        function generateSessionId() {{
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'top';
-            ctx.font = '14px Arial';
-            ctx.fillText('fingerprint', 2, 2);
-            const fingerprint = canvas.toDataURL();
-            
-            const data = navigator.userAgent + fingerprint + screen.width + screen.height;
+        // STABLE Session ID with localStorage
+        function getOrCreateSessionId() {{
+            let sessionId = localStorage.getItem('gk_session_id');
+            if (!sessionId) {{
+                sessionId = generateStableSessionId();
+                localStorage.setItem('gk_session_id', sessionId);
+            }}
+            return sessionId;
+        }}
+        
+        function generateStableSessionId() {{
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const fingerprint = [
+                navigator.userAgent,
+                screen.width,
+                screen.height,
+                screen.colorDepth,
+                new Date().getTimezoneOffset(),
+                navigator.language
+            ].join('|');
+            const combined = `${{timestamp}}-${{random}}-${{fingerprint}}`;
             let hash = 0;
-            for (let i = 0; i < data.length; i++) {{
-                const char = data.charCodeAt(i);
+            for (let i = 0; i < combined.length; i++) {{
+                const char = combined.charCodeAt(i);
                 hash = ((hash << 5) - hash) + char;
                 hash = hash & hash;
             }}
-            return Math.abs(hash).toString(16);
+            return Math.abs(hash).toString(16) + '-' + random.substring(0, 8);
         }}
         
         async function logScan(lat, lon, accuracy) {{
             const userAgent = navigator.userAgent;
-            const sessionId = generateSessionId();
-            
+            const sessionId = getOrCreateSessionId();
             try {{
                 await fetch(`${{API}}/api/scan-log`, {{
                     method: 'POST',
@@ -170,7 +181,6 @@ async def redirect_qr(
             }} catch (e) {{
                 console.log('Log failed:', e);
             }}
-            
             window.location.href = TARGET_URL;
         }}
         

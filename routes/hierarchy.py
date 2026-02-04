@@ -64,33 +64,30 @@ async def create_region(
     await db.refresh(new_region)
     return new_region
 
-@router.put("/regions/{region_id}", response_model=RegionResponse)
+@router.patch("/regions/{region_id}", response_model=RegionResponse)
 async def update_region(
     region_id: int,
     region_update: RegionUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update region (Super Admin only)"""
     require_super_admin(current_user)
-    
-    result = await db.execute(
-        select(Region).where(Region.id == region_id)
-    )
+
+    result = await db.execute(select(Region).where(Region.id == region_id))
     region = result.scalar_one_or_none()
-    
+
     if not region:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Region not found"
-        )
-    
-    region.name = region_update.name
-    region.code = region_update.code
-    
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    update_data = region_update.model_dump(exclude_unset=True)
+
+    for key, value in update_data.items():
+        setattr(region, key, value)
+
     await db.commit()
     await db.refresh(region)
     return region
+
 
 
 # ============================================
@@ -149,27 +146,29 @@ async def update_cluster(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update cluster (Super Admin only)"""
     require_super_admin(current_user)
-    
-    result = await db.execute(
-        select(Cluster).where(Cluster.id == cluster_id)
-    )
+
+    result = await db.execute(select(Cluster).where(Cluster.id == cluster_id))
     cluster = result.scalar_one_or_none()
-    
+
     if not cluster:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cluster not found"
-        )
-    
-    cluster.name = cluster_update.name
-    cluster.code = cluster_update.code
-    cluster.region_id = cluster_update.region_id
-    
+        raise HTTPException(status_code=404, detail="Cluster not found")
+
+    update_data = cluster_update.model_dump(exclude_unset=True)
+
+    # Optional safety: validate region exists if region_id is being changed
+    if "region_id" in update_data:
+        region_check = await db.execute(select(Region).where(Region.id == update_data["region_id"]))
+        if not region_check.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Region not found")
+
+    for key, value in update_data.items():
+        setattr(cluster, key, value)
+
     await db.commit()
     await db.refresh(cluster)
     return cluster
+
 
 # ============================================
 # BRANCH ROUTES
@@ -232,24 +231,25 @@ async def update_branch(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update branch (Super Admin only)"""
     require_super_admin(current_user)
-    
-    result = await db.execute(
-        select(Branch).where(Branch.id == branch_id)
-    )
+
+    result = await db.execute(select(Branch).where(Branch.id == branch_id))
     branch = result.scalar_one_or_none()
-    
+
     if not branch:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Branch not found"
-        )
-    
-    branch.name = branch_update.name
-    branch.code = branch_update.code
-    branch.location = branch_update.location
-    
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    update_data = branch_update.model_dump(exclude_unset=True)
+
+    # Optional safety: validate cluster exists if cluster_id is added later
+    if "cluster_id" in update_data:
+        cluster_check = await db.execute(select(Cluster).where(Cluster.id == update_data["cluster_id"]))
+        if not cluster_check.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+    for key, value in update_data.items():
+        setattr(branch, key, value)
+
     await db.commit()
     await db.refresh(branch)
     return branch

@@ -523,9 +523,10 @@ td {
 
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
-        <button class="nav-tab active" onclick="switchTab('regions')">Regions</button>
-        <button class="nav-tab" onclick="switchTab('clusters')">Clusters</button>
-        <button class="nav-tab" onclick="switchTab('branches')">Branches</button>
+        <button class="nav-tab active" onclick="switchTab('regions', this)">Regions</button>
+        <button class="nav-tab" onclick="switchTab('clusters', this)">Clusters</button>
+        <button class="nav-tab" onclick="switchTab('branches', this)">Branches</button>
+
     </div>
 
     <!-- REGIONS TAB -->
@@ -606,7 +607,7 @@ td {
                             <th>Branch</th>
                             <th>Code</th>
                             <th>Cluster</th>
-                            <th>Contact</th>
+                            <th>Region</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -721,7 +722,7 @@ td {
                     <label>Address</label>
                     <textarea id="branchAddress" placeholder="Branch address"></textarea>
                 </div>
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label>Contact Person</label>
                     <input type="text" id="branchContact" placeholder="Manager name" />
                 </div>
@@ -732,7 +733,7 @@ td {
                 <div class="form-group">
                     <label>Contact Email</label>
                     <input type="email" id="branchEmail" placeholder="branch@example.com" />
-                </div>
+                </div> -->
             </form>
         </div>
         <div class="modal-footer">
@@ -788,10 +789,10 @@ async function loadUserInfo() {
 }
 
 // Tab Switching
-function switchTab(tab) {
-    // Update tab buttons
+function switchTab(tab, el) {
     document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    el.classList.add('active');
+
     
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -911,30 +912,43 @@ async function saveRegion() {
     const name = document.getElementById('regionName').value.trim();
     const code = document.getElementById('regionCode').value.trim().toUpperCase();
     const description = document.getElementById('regionDescription').value.trim();
-    
+
     if (!name || !code) {
         showModalError('regionError', 'Please fill in all required fields');
         return;
     }
-    
-    const data = { name, code, description: description || null };
-    
+
     try {
-        const url = currentEditId 
-            ? `${API}/api/regions/${currentEditId}`
-            : `${API}/api/regions`;
-        
-        const res = await fetch(url, {
-            method: currentEditId ? 'PUT' : 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(data)
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Failed to save');
+        if (currentEditId) {
+            const original = regionsData.find(r => r.id === currentEditId);
+
+            const updated = {
+                name,
+                code,
+                description: description || null
+            };
+
+            const payload = buildPatchPayload(original, updated);
+
+            if (Object.keys(payload).length === 0) {
+                closeRegionModal();
+                return;
+            }
+
+            await fetch(`${API}/api/regions/${currentEditId}`, {
+                method: 'PATCH',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+        } else {
+            await fetch(`${API}/api/regions`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ name, code, description: description || null })
+            });
         }
-        
+
         closeRegionModal();
         loadRegions();
     } catch (err) {
@@ -942,14 +956,27 @@ async function saveRegion() {
     }
 }
 
+
 function editRegion(id) {
     openRegionModal(id);
+}
+
+function buildPatchPayload(original, updated) {
+    const payload = {};
+
+    Object.keys(updated).forEach(key => {
+        if (updated[key] !== original[key] && updated[key] !== "") {
+            payload[key] = updated[key];
+        }
+    });
+
+    return payload;
 }
 
 async function toggleRegionStatus(id, currentStatus) {
     try {
         const res = await fetch(`${API}/api/regions/${id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });
@@ -1095,30 +1122,44 @@ async function saveCluster() {
     const code = document.getElementById('clusterCode').value.trim().toUpperCase();
     const region_id = parseInt(document.getElementById('clusterRegion').value);
     const description = document.getElementById('clusterDescription').value.trim();
-    
+
     if (!name || !code || !region_id) {
         showModalError('clusterError', 'Please fill in all required fields');
         return;
     }
-    
-    const data = { name, code, region_id, description: description || null };
-    
+
     try {
-        const url = currentEditId 
-            ? `${API}/api/clusters/${currentEditId}`
-            : `${API}/api/clusters`;
-        
-        const res = await fetch(url, {
-            method: currentEditId ? 'PUT' : 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(data)
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Failed to save');
+        if (currentEditId) {
+            const original = clustersData.find(c => c.id === currentEditId);
+
+            const updated = {
+                name,
+                code,
+                region_id,
+                description: description || null
+            };
+
+            const payload = buildPatchPayload(original, updated);
+
+            if (Object.keys(payload).length === 0) {
+                closeClusterModal();
+                return;
+            }
+
+            await fetch(`${API}/api/clusters/${currentEditId}`, {
+                method: 'PATCH',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+        } else {
+            await fetch(`${API}/api/clusters`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ name, code, region_id, description: description || null })
+            });
         }
-        
+
         closeClusterModal();
         loadClusters();
     } catch (err) {
@@ -1126,14 +1167,10 @@ async function saveCluster() {
     }
 }
 
-function editCluster(id) {
-    openClusterModal(id);
-}
-
 async function toggleClusterStatus(id, currentStatus) {
     try {
         const res = await fetch(`${API}/api/clusters/${id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });
@@ -1261,9 +1298,9 @@ async function openBranchModal(editId = null) {
         document.getElementById('branchCode').value = branch.code;
         document.getElementById('branchCluster').value = branch.cluster_id;
         document.getElementById('branchAddress').value = branch.address || '';
-        document.getElementById('branchContact').value = branch.contact_person || '';
-        document.getElementById('branchPhone').value = branch.contact_phone || '';
-        document.getElementById('branchEmail').value = branch.contact_email || '';
+        // document.getElementById('branchContact').value = branch.contact_person || '';
+        // document.getElementById('branchPhone').value = branch.contact_phone || '';
+        // document.getElementById('branchEmail').value = branch.contact_email || '';
     } else {
         title.textContent = 'Add Branch';
         document.getElementById('branchForm').reset();
@@ -1283,39 +1320,56 @@ async function saveBranch() {
     const code = document.getElementById('branchCode').value.trim().toUpperCase();
     const cluster_id = parseInt(document.getElementById('branchCluster').value);
     const address = document.getElementById('branchAddress').value.trim();
-    const contact_person = document.getElementById('branchContact').value.trim();
-    const contact_phone = document.getElementById('branchPhone').value.trim();
-    const contact_email = document.getElementById('branchEmail').value.trim();
-    
+    // const contact_person = document.getElementById('branchContact').value.trim();
+    // const contact_phone = document.getElementById('branchPhone').value.trim();
+    // const contact_email = document.getElementById('branchEmail').value.trim();
+
     if (!name || !code || !cluster_id) {
         showModalError('branchError', 'Please fill in all required fields');
         return;
     }
-    
-    const data = { 
-        name, code, cluster_id,
-        address: address || null,
-        contact_person: contact_person || null,
-        contact_phone: contact_phone || null,
-        contact_email: contact_email || null
-    };
-    
+
     try {
-        const url = currentEditId 
-            ? `${API}/api/branches/${currentEditId}`
-            : `${API}/api/branches`;
-        
-        const res = await fetch(url, {
-            method: currentEditId ? 'PUT' : 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(data)
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Failed to save');
+        if (currentEditId) {
+            const original = branchesData.find(b => b.id === currentEditId);
+
+            const updated = {
+                name,
+                code,
+                cluster_id,
+                location: address || null,
+                // contact_person: contact_person || null,
+                // contact_phone: contact_phone || null,
+                // contact_email: contact_email || null
+            };
+
+            const payload = buildPatchPayload(original, updated);
+
+            if (Object.keys(payload).length === 0) {
+                closeBranchModal();
+                return;
+            }
+
+            await fetch(`${API}/api/branches/${currentEditId}`, {
+                method: 'PATCH',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+        } else {
+            await fetch(`${API}/api/branches`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    name, code, cluster_id,
+                    location: address || null,
+                    // contact_person: contact_person || null,
+                    // contact_phone: contact_phone || null,
+                    // contact_email: contact_email || null
+                })
+            });
         }
-        
+
         closeBranchModal();
         loadBranches();
     } catch (err) {
@@ -1330,7 +1384,7 @@ function editBranch(id) {
 async function toggleBranchStatus(id, currentStatus) {
     try {
         const res = await fetch(`${API}/api/branches/${id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });

@@ -679,14 +679,14 @@ tbody tr:hover {
 
         <div class="filter-item">
             <label>Branch</label>
-            <select id="branchFilter">
+            <select id="branchFilter" onchange="filterQRCodes()">
                 <option value="">All Branches</option>
             </select>
         </div>
 
         <div class="filter-item">
             <label>Status</label>
-            <select id="statusFilter">
+            <select id="statusFilter" onchange="filterQRCodes()">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -695,11 +695,11 @@ tbody tr:hover {
 
         <div class="filter-item search-box">
             <label>Search</label>
-            <input type="text" id="searchInput" placeholder="Search QR, branch...">
+            <input type="text" id="searchInput" placeholder="Search QR, branch..." oninput="filterQRCodes()">
         </div>
 
         <div class="filter-actions-inline">
-            <button class="btn btn-primary btn-sm" onclick="filterQRCodes()">Search</button>
+            <!-- Real-time search active -->
             <button class="btn btn-outline btn-sm" onclick="resetFilters()">Reset</button>
         </div>
     </div>
@@ -943,8 +943,17 @@ function changeRowsPerPage(value) {
 
 
 function populateFilters() {
+    // Populate regions
     document.getElementById('regionFilter').innerHTML = '<option value="">All Regions</option>' + 
         regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    
+    // Populate all clusters initially
+    document.getElementById('clusterFilter').innerHTML = '<option value="">All Clusters</option>' + 
+        clusters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    
+    // Populate all branches initially
+    document.getElementById('branchFilter').innerHTML = '<option value="">All Branches</option>' + 
+        branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 }
 
 function populateQRForm() {
@@ -1157,6 +1166,14 @@ function resetFilters() {
     document.getElementById('branchFilter').value = '';
     document.getElementById('statusFilter').value = '';
     document.getElementById('searchInput').value = '';
+    
+    // Repopulate all clusters and branches when reset
+    document.getElementById('clusterFilter').innerHTML = '<option value="">All Clusters</option>' + 
+        clusters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    
+    document.getElementById('branchFilter').innerHTML = '<option value="">All Branches</option>' + 
+        branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    
     filterQRCodes();
 }
 

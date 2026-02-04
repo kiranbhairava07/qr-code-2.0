@@ -42,7 +42,6 @@ async def list_qr_codes(
             select(
                 QRCode,
                 func.coalesce(func.count(QRScan.id), 0).label("scan_count"),
-                Branch.name.label("branch_name")
             )
             .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
@@ -54,26 +53,16 @@ async def list_qr_codes(
         )
 
         rows = result.all()
+        rows = result.all()
         response_list = []
 
-        for qr, scan_count, branch_name in rows:
-            qr_dict = {
-                "id": qr.id,
-                "code": qr.code,
-                "name": branch_name,  # ✅ Using branch name as QR name
-                "target_url": qr.target_url,
-                "branch_id": qr.branch_id,
-                "is_active": qr.is_active,
-                "created_at": qr.created_at,
-                "updated_at": qr.updated_at,
-                "created_by": qr.created_by,
-                "scan_count": scan_count
-            }
-            response_list.append(qr_dict)
+        for qr, scan_count in rows:
+            # Set scan_count as attribute for response model
+            qr.scan_count = scan_count
+            response_list.append(qr)
 
         logger.info(f"Listed {len(response_list)} QR codes for user {current_user.id}")
         return response_list
-
     except Exception as e:
         logger.error(f"Error listing QR codes: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch QR codes")
@@ -120,10 +109,10 @@ async def create_qr_code(
         
         logger.info(f"Created QR code: {qr_data.code} by user {current_user.id}")
         
-        return {
-            **new_qr.__dict__,
-            "scan_count": 0
-        }
+        # Set scan_count as attribute for response model
+        new_qr.scan_count = 0
+        
+        return new_qr
         
     except HTTPException:
         raise
@@ -151,7 +140,6 @@ async def get_qr_code(
             select(
                 QRCode,
                 func.coalesce(func.count(QRScan.id), 0).label("scan_count"),
-                Branch.name.label("branch_name")  # 👈 Fetch branch name
             )
             .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
@@ -167,12 +155,11 @@ async def get_qr_code(
                 detail="QR code not found"
             )
 
-        qr_code, scan_count, branch_name = row
+        qr_code, scan_count = row
 
         return {
             "id": qr_code.id,
             "code": qr_code.code,
-            "name": branch_name,  # ✅ Required field now present
             "target_url": qr_code.target_url,
             "branch_id": qr_code.branch_id,
             "is_active": qr_code.is_active,
@@ -232,12 +219,12 @@ async def update_qr_code(
         )
         scan_count = scan_count_result.scalar()
         
+        # Set scan_count as attribute for response model
+        qr_code.scan_count = scan_count
+        
         logger.info(f"Updated QR code {qr_id} by user {current_user.id}")
         
-        return {
-            **qr_code.__dict__,
-            "scan_count": scan_count
-        }
+        return qr_code
         
     except HTTPException:
         raise

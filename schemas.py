@@ -103,7 +103,6 @@ class QRCodeUpdate(BaseModel):
 class QRCodeResponse(BaseModel):
     id: int
     code: str
-    name: Optional[str]
     target_url: str
     branch_id: int
     is_active: bool

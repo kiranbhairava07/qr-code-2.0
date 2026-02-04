@@ -812,45 +812,33 @@ async function getBranchAnalytics(branchId, startDate = null, endDate = null) {
 
 async function getBranchQRId() {
     try {
-        // Get QR codes and find the one that matches the branch
         const qrRes = await fetch(`${API}/api/qr`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         if (qrRes.status === 401) {
             window.location.href = '/';
             return;
         }
-        
+
         const qrList = await qrRes.json();
-        
-        // Find QR code that belongs to this branch
-        // Assuming QR code name matches branch name or contains branch name
-        const branchQR = qrList.find(qr => {
-            // Try different matching strategies
-            const qrName = qr.name.toLowerCase();
-            const branchName = selectedBranch.name.toLowerCase();
-            
-            // Match exact name or contains branch name
-            return qrName === branchName || 
-                   qrName.includes(branchName) || 
-                   branchName.includes(qrName) ||
-                   // Try matching by ID if QR has branch_id field
-                   (qr.branch_id && qr.branch_id == selectedBranch.id);
-        });
-        
+
+        if (!selectedBranch) {
+            selectedBranchQRId = null;
+            return;
+        }
+
+        // Check if QR exists for this branch by branch_id
+        const branchQR = qrList.find(qr => qr.branch_id === selectedBranch.id);
+
         if (branchQR) {
             selectedBranchQRId = branchQR.id;
-            console.log(`Found QR for branch ${selectedBranch.name}: ${branchQR.name} (ID: ${branchQR.id})`);
-        } else if (qrList.length > 0) {
-            // Fallback to first QR code if no match found
-            selectedBranchQRId = qrList[0].id;
-            console.log(`No exact match found for ${selectedBranch.name}, using first QR: ${qrList[0].name}`);
+            console.log(`Found QR for branch ${selectedBranch.name}:`, branchQR);
         } else {
             selectedBranchQRId = null;
-            console.log(`No QR codes found for branch ${selectedBranch.name}`);
+            console.log(`No QR mapped to branch ${selectedBranch.name}`);
         }
-        
+
     } catch (err) {
         console.error('Failed to get branch QR ID:', err);
         selectedBranchQRId = null;

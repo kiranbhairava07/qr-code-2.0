@@ -7,7 +7,7 @@ import hashlib
 import uuid
 
 from database import get_db
-from models import QRCode, QRScan
+from models import QRCode, QRScan, SocialClick
 from utils import parse_device_info, get_location_from_ip, get_location_from_gps
 from config import settings
 
@@ -22,12 +22,26 @@ def generate_session_id(ip: str, user_agent: str) -> str:
 
 
 async def is_new_user(db: AsyncSession, session_id: str) -> bool:
-    """Check if this is a new user based on session_id"""
-    result = await db.execute(
+    """
+    Check if this is a new user based on session_id.
+    Checks BOTH QR scans AND social clicks across all branches.
+    """
+    # Check QR scans
+    qr_result = await db.execute(
         select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
     )
-    existing = result.scalar_one_or_none()
-    return existing is None
+    qr_exists = qr_result.scalar_one_or_none()
+    
+    if qr_exists:
+        return False  # Found in QR scans - returning user
+    
+    # Check social clicks
+    social_result = await db.execute(
+        select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
+    )
+    social_exists = social_result.scalar_one_or_none()
+    
+    return social_exists is None  # New only if not found in both tables
 
 
 @router.get("/r/{code}")

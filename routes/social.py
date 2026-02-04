@@ -7,7 +7,7 @@ from typing import Optional
 import logging
 
 from database import get_db
-from models import SocialClick, QRCode
+from models import SocialClick, QRCode, QRScan
 from utils import parse_device_info, get_location_from_ip
 
 router = APIRouter(tags=["Social Links"])
@@ -54,13 +54,27 @@ async def social_links_page(
 
 
 
-async def is_new_user_social(db: AsyncSession, session_id: str) -> bool:
-    """Check if this is a new user based on session_id"""
-    result = await db.execute(
+async def is_new_user(db: AsyncSession, session_id: str) -> bool:
+    """
+    Check if this is a new user based on session_id.
+    Checks BOTH QR scans AND social clicks across all branches.
+    """
+    # Check QR scans
+    qr_result = await db.execute(
+        select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
+    )
+    qr_exists = qr_result.scalar_one_or_none()
+    
+    if qr_exists:
+        return False  # Found in QR scans - returning user
+    
+    # Check social clicks
+    social_result = await db.execute(
         select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
     )
-    existing = result.scalar_one_or_none()
-    return existing is None
+    social_exists = social_result.scalar_one_or_none()
+    
+    return social_exists is None  # New only if not found in both tables
 
 
 @router.post("/api/social-click")
@@ -94,7 +108,7 @@ async def log_social_click(
         location_data = await get_location_from_ip(ip_address)
         
         # Check if new user
-        is_new = await is_new_user_social(db, session_id) if session_id else True
+        is_new = await is_new_user(db, session_id) if session_id else True
         
         # Create click record
         click = SocialClick(

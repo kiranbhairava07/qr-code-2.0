@@ -808,24 +808,40 @@ async function openClusterModal(editId = null) {
     const modal = document.getElementById('clusterModal');
     const title = document.getElementById('clusterModalTitle');
     
-    // Load regions for dropdown
-    if (regionsData.length === 0) {
-        await loadRegions();
-    }
-    
-    const regionSelect = document.getElementById('clusterRegion');
-    regionSelect.innerHTML = '<option value="">Select Region</option>' + 
-        regionsData.map(r => `<option value="${r.id}">${r.name}${!r.is_active ? ' (Inactive)' : ''}</option>`).join('');
-    
     if (editId) {
+        // EDIT MODE: Show only name and code (no region dropdown)
         const cluster = clustersData.find(c => c.id === editId);
         title.textContent = 'Edit Cluster';
         document.getElementById('clusterName').value = cluster.name;
         document.getElementById('clusterCode').value = cluster.code;
-        document.getElementById('clusterRegion').value = cluster.region_id;
+        
+        // Hide region field for editing
+        const regionField = document.getElementById('clusterRegion');
+        if (regionField) {
+            regionField.style.display = 'none';
+            regionField.previousElementSibling.style.display = 'none';
+        }
     } else {
+        // ADD MODE: Show all fields including region
         title.textContent = 'Add Cluster';
         document.getElementById('clusterForm').reset();
+        
+        // Show region field and populate dropdown
+        const regionField = document.getElementById('clusterRegion');
+        if (regionField) {
+            regionField.style.display = 'block';
+            regionField.previousElementSibling.style.display = 'block';
+            
+            // Load regions for dropdown if not loaded
+            if (regionsData.length === 0) {
+                await loadRegions();
+            }
+            
+            regionField.innerHTML = '<option value="">Select Region</option>' + 
+                regionsData.filter(r => r.is_active).map(r => 
+                    `<option value="${r.id}">${r.name}</option>`
+                ).join('');
+        }
     }
     
     modal.classList.add('show');
@@ -835,26 +851,40 @@ function closeClusterModal() {
     document.getElementById('clusterModal').classList.remove('show');
     document.getElementById('clusterError').classList.remove('show');
     currentEditId = null;
+    
+    // Reset region field visibility
+    const regionField = document.getElementById('clusterRegion');
+    if (regionField) {
+        regionField.style.display = 'block';
+        regionField.previousElementSibling.style.display = 'block';
+    }
 }
 
 async function saveCluster() {
     const name = document.getElementById('clusterName').value.trim();
     const code = document.getElementById('clusterCode').value.trim().toUpperCase();
-    const region_id = parseInt(document.getElementById('clusterRegion').value);
-
-    if (!name || !code || !region_id) {
+    
+    if (!name || !code) {
         showModalError('clusterError', 'Please fill in all required fields');
         return;
     }
 
     try {
         if (currentEditId) {
+            // EDIT: Only update name and code (not region_id)
             await fetch(`${API_BASE}/api/clusters/${currentEditId}`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify({ name, code, region_id })
+                body: JSON.stringify({ name, code })
             });
         } else {
+            // ADD: Include region_id
+            const region_id = parseInt(document.getElementById('clusterRegion').value);
+            if (!region_id) {
+                showModalError('clusterError', 'Please select a region');
+                return;
+            }
+            
             await fetch(`${API_BASE}/api/clusters`, {
                 method: 'POST',
                 headers: getHeaders(),
@@ -966,29 +996,42 @@ async function openBranchModal(editId = null) {
     const modal = document.getElementById('branchModal');
     const title = document.getElementById('branchModalTitle');
     
-    // Load clusters for dropdown
-    if (clustersData.length === 0) {
-        await loadClusters();
-    }
-    
-    const clusterSelect = document.getElementById('branchCluster');
-    clusterSelect.innerHTML = '<option value="">Select Cluster</option>' + 
-        clustersData.map(c => {
-            const region = regionsData.find(r => r.id === c.region_id);
-            const inactiveLabel = !c.is_active ? ' (Inactive)' : '';
-            return `<option value="${c.id}">${c.name} - ${region ? region.name : 'N/A'}${inactiveLabel}</option>`;
-        }).join('');
-    
     if (editId) {
+        // EDIT MODE: Show only name, code, location (no cluster dropdown)
         const branch = branchesData.find(b => b.id === editId);
         title.textContent = 'Edit Branch';
         document.getElementById('branchName').value = branch.name;
         document.getElementById('branchCode').value = branch.code;
-        document.getElementById('branchCluster').value = branch.cluster_id;
         document.getElementById('branchLocation').value = branch.location || '';
+        
+        // Hide cluster field for editing
+        const clusterField = document.getElementById('branchCluster');
+        if (clusterField) {
+            clusterField.style.display = 'none';
+            clusterField.previousElementSibling.style.display = 'none';
+        }
     } else {
+        // ADD MODE: Show all fields including cluster
         title.textContent = 'Add Branch';
         document.getElementById('branchForm').reset();
+        
+        // Show cluster field and populate dropdown
+        const clusterField = document.getElementById('branchCluster');
+        if (clusterField) {
+            clusterField.style.display = 'block';
+            clusterField.previousElementSibling.style.display = 'block';
+            
+            // Load clusters for dropdown if not loaded
+            if (clustersData.length === 0) {
+                await loadClusters();
+            }
+            
+            clusterField.innerHTML = '<option value="">Select Cluster</option>' + 
+                clustersData.filter(c => c.is_active).map(c => {
+                    const region = regionsData.find(r => r.id === c.region_id);
+                    return `<option value="${c.id}">${c.name} - ${region ? region.name : 'N/A'}</option>`;
+                }).join('');
+        }
     }
     
     modal.classList.add('show');
@@ -998,31 +1041,54 @@ function closeBranchModal() {
     document.getElementById('branchModal').classList.remove('show');
     document.getElementById('branchError').classList.remove('show');
     currentEditId = null;
+    
+    // Reset cluster field visibility
+    const clusterField = document.getElementById('branchCluster');
+    if (clusterField) {
+        clusterField.style.display = 'block';
+        clusterField.previousElementSibling.style.display = 'block';
+    }
 }
 
 async function saveBranch() {
     const name = document.getElementById('branchName').value.trim();
     const code = document.getElementById('branchCode').value.trim().toUpperCase();
-    const cluster_id = parseInt(document.getElementById('branchCluster').value);
     const location = document.getElementById('branchLocation').value.trim();
-
-    if (!name || !code || !cluster_id) {
+    
+    if (!name || !code) {
         showModalError('branchError', 'Please fill in all required fields');
         return;
     }
 
     try {
         if (currentEditId) {
+            // EDIT: Only update name, code, location (not cluster_id)
             await fetch(`${API_BASE}/api/branches/${currentEditId}`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify({ name, code, cluster_id, location: location || null })
+                body: JSON.stringify({ 
+                    name, 
+                    code, 
+                    location: location || null 
+                })
             });
         } else {
+            // ADD: Include cluster_id
+            const cluster_id = parseInt(document.getElementById('branchCluster').value);
+            if (!cluster_id) {
+                showModalError('branchError', 'Please select a cluster');
+                return;
+            }
+            
             await fetch(`${API_BASE}/api/branches`, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({ name, code, cluster_id, location: location || null })
+                body: JSON.stringify({ 
+                    name, 
+                    code, 
+                    cluster_id,
+                    location: location || null 
+                })
             });
         }
 

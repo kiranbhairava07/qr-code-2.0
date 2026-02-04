@@ -131,7 +131,7 @@ async def redirect_qr(
         const TARGET_URL = "{redirect_url}";
         const API = "{settings.BASE_URL}";
         
-        // FIXED: Use localStorage for consistent session ID
+        // FIXED: Use localStorage for stable session ID
         function getSessionId() {{
             let sessionId = localStorage.getItem('qr_session_id');
             if (!sessionId) {{

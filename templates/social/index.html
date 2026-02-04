@@ -77,33 +77,30 @@
   </section>
 
   <script>
-    // Track social media clicks with branch tracking
+    // FIXED: Use localStorage for consistent session ID across ALL pages
     const API = 'https://qr-code-2-0-22ky.onrender.com';
     
     // Get branch code from URL parameter (set by QR code redirect)
     const urlParams = new URLSearchParams(window.location.search);
     const branchCode = urlParams.get('branch');
     
-    // Generate session ID for new vs returning tracking
-    function generateSessionId() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('fingerprint', 2, 2);
-      const fingerprint = canvas.toDataURL();
-      
-      const data = navigator.userAgent + fingerprint + screen.width + screen.height;
-      let hash = 0;
-      for (let i = 0; i < data.length; i++) {
-        const char = data.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+    // Use SAME localStorage key as QR page
+    function getSessionId() {
+      let sessionId = localStorage.getItem('qr_session_id');
+      if (!sessionId) {
+        sessionId = generateSessionId();
+        localStorage.setItem('qr_session_id', sessionId);
       }
-      return Math.abs(hash).toString(16);
+      return sessionId;
     }
     
-    const sessionId = generateSessionId();
+    function generateSessionId() {
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 15);
+      return timestamp + random;
+    }
+    
+    const sessionId = getSessionId(); // ← Now uses localStorage!
     
     document.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', async (e) => {

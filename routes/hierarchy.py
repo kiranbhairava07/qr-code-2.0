@@ -34,7 +34,7 @@ async def get_all_regions(
 ):
     """Get all regions"""
     result = await db.execute(
-        select(Region).where(Region.is_active == True).order_by(Region.name)
+        select(Region).order_by(Region.name)
     )
     return result.scalars().all()
 
@@ -100,7 +100,7 @@ async def get_all_clusters(
     current_user: User = Depends(get_current_user)
 ):
     """Get all clusters, optionally filtered by region"""
-    query = select(Cluster).where(Cluster.is_active == True)
+    query = select(Cluster)
     
     if region_id:
         query = query.where(Cluster.region_id == region_id)
@@ -181,7 +181,7 @@ async def get_all_branches(
     current_user: User = Depends(get_current_user)
 ):
     """Get all branches, optionally filtered by region or cluster"""
-    query = select(Branch).where(Branch.is_active == True)
+    query = select(Branch)
     
     if cluster_id:
         query = query.where(Branch.cluster_id == cluster_id)

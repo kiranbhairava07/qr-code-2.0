@@ -1289,7 +1289,13 @@ async function openBranchModal(editId = null) {
     
     const clusterSelect = document.getElementById('branchCluster');
     clusterSelect.innerHTML = '<option value="">Select Cluster</option>' + 
-        clustersData.filter(c => c.is_active).map(c => `<option value="${c.id}">${c.name} (${c.region_name})</option>`).join('');
+        clustersData
+            .filter(c => c.is_active)
+            .map(c => {
+                const region = regionsData.find(r => r.id === c.region_id);
+                return `<option value="${c.id}">${c.name} (${region ? region.name : '—'})</option>`;
+            }).join('');
+
     
     if (editId) {
         const branch = branchesData.find(b => b.id === editId);
@@ -1297,7 +1303,7 @@ async function openBranchModal(editId = null) {
         document.getElementById('branchName').value = branch.name;
         document.getElementById('branchCode').value = branch.code;
         document.getElementById('branchCluster').value = branch.cluster_id;
-        document.getElementById('branchAddress').value = branch.address || '';
+        document.getElementById('branchAddress').value = branch.location || '';
         // document.getElementById('branchContact').value = branch.contact_person || '';
         // document.getElementById('branchPhone').value = branch.contact_phone || '';
         // document.getElementById('branchEmail').value = branch.contact_email || '';

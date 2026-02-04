@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Hierarchy Manager - Dashboard</title>
+<title>Hierarchy Manager</title>
 <link rel="icon" type="image/png" href="static/social/gk.png"/>
 
 <style>
@@ -11,15 +11,12 @@
     --primary: #3b82f6;
     --primary-hover: #2563eb;
     --danger: #ef4444;
-    --danger-hover: #dc2626;
     --success: #10b981;
-    --warning: #f59e0b;
     --bg: #f8fafc;
     --card: #ffffff;
     --border: #e2e8f0;
     --text: #0f172a;
     --text-light: #64748b;
-    --shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,7 +34,6 @@ body {
     padding: 24px;
 }
 
-/* Header */
 .header {
     background: var(--card);
     border-bottom: 1px solid var(--border);
@@ -58,9 +54,6 @@ body {
     font-size: 20px;
     font-weight: 700;
     color: var(--primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .header-actions {
@@ -69,12 +62,6 @@ body {
     align-items: center;
 }
 
-.user-email {
-    font-size: 14px;
-    color: var(--text-light);
-}
-
-/* Navigation Tabs */
 .nav-tabs {
     display: flex;
     gap: 8px;
@@ -95,25 +82,12 @@ body {
     transition: all 0.2s;
 }
 
-.nav-tab:hover {
-    color: var(--primary);
-}
+.nav-tab:hover { color: var(--primary); }
+.nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-.nav-tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 
-/* Tab Content */
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-/* Buttons */
 .btn {
     padding: 10px 18px;
     border-radius: 8px;
@@ -132,9 +106,7 @@ body {
     color: white;
 }
 
-.btn-primary:hover {
-    background: var(--primary-hover);
-}
+.btn-primary:hover { background: var(--primary-hover); }
 
 .btn-outline {
     background: white;
@@ -142,60 +114,13 @@ body {
     color: var(--text);
 }
 
-.btn-outline:hover {
-    background: var(--bg);
-}
+.btn-outline:hover { background: var(--bg); }
 
-.btn-danger {
-    background: var(--danger);
-    color: white;
-}
-
-.btn-danger:hover {
-    background: var(--danger-hover);
-}
-
-.btn-sm {
-    padding: 6px 12px;
-    font-size: 13px;
-}
-
-/* Stats Cards */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 32px;
-}
-
-.stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-}
-
-.stat-label {
-    font-size: 13px;
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-}
-
-.stat-value {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--primary);
-}
-
-/* Main Card */
 .card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     overflow: hidden;
 }
 
@@ -207,23 +132,9 @@ body {
     align-items: center;
 }
 
-.card-title {
-    font-size: 18px;
-    font-weight: 700;
-}
+.card-title { font-size: 18px; font-weight: 700; }
 
-.search-box {
-    padding: 8px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
-    width: 300px;
-}
-
-/* Table */
-.table-container {
-    overflow-x: auto;
-}
+.table-container { overflow-x: auto; }
 
 table {
     width: 100%;
@@ -245,18 +156,6 @@ td {
     padding: 16px 24px;
     border-top: 1px solid var(--border);
     font-size: 14px;
-}
-
-.entity-name {
-    font-weight: 600;
-    color: var(--text);
-}
-
-.entity-meta {
-    font-size: 13px;
-    color: var(--text-light);
-    display: block;
-    margin-top: 2px;
 }
 
 .badge {
@@ -283,58 +182,44 @@ td {
 }
 
 .icon-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    background: none;
     border: none;
-    background: var(--bg);
-    color: var(--text-light);
+    padding: 6px;
     cursor: pointer;
+    color: #64748b;
+    border-radius: 6px;
+    transition: all 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
-}
-
-.icon-btn:hover {
-    background: var(--primary);
-    color: white;
-}
-
-.icon-btn.delete:hover {
-    background: var(--danger);
-    color: white;
 }
 
 .icon-btn svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 2;
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-light);
+.icon-btn:hover {
+    background: var(--bg);
 }
 
-/* Modal */
+.icon-btn.delete:hover {
+    color: var(--danger);
+    background: #fee2e2;
+}
+
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
     display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     align-items: center;
     justify-content: center;
     z-index: 1000;
 }
 
-.modal.show {
-    display: flex;
-}
+.modal.show { display: flex; }
 
 .modal-content {
     background: var(--card);
@@ -343,7 +228,6 @@ td {
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
 }
 
 .modal-header {
@@ -354,17 +238,14 @@ td {
     align-items: center;
 }
 
-.modal-title {
-    font-size: 18px;
-    font-weight: 700;
-}
+.modal-title { font-size: 18px; font-weight: 700; }
 
 .close-btn {
     background: none;
     border: none;
     font-size: 24px;
-    color: var(--text-light);
     cursor: pointer;
+    color: var(--text-light);
     padding: 0;
     width: 32px;
     height: 32px;
@@ -372,53 +253,41 @@ td {
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    transition: all 0.2s;
 }
 
-.close-btn:hover {
-    background: var(--bg);
-    color: var(--text);
-}
+.close-btn:hover { background: var(--bg); }
 
-.modal-body {
-    padding: 24px;
-}
+.modal-body { padding: 24px; }
 
 .form-group {
     margin-bottom: 20px;
 }
 
-.form-label {
+.form-group label {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    margin-bottom: 8px;
     color: var(--text);
+    margin-bottom: 8px;
 }
 
-.form-input,
-.form-select,
-.form-textarea {
+.form-group input,
+.form-group select,
+.form-group textarea {
     width: 100%;
-    padding: 10px 14px;
+    padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
-    transition: all 0.2s;
 }
 
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-}
-
-.form-textarea {
-    resize: vertical;
-    min-height: 80px;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .modal-footer {
@@ -432,91 +301,85 @@ td {
 .error-message {
     background: #fee2e2;
     color: var(--danger);
-    padding: 12px 16px;
+    padding: 12px;
     border-radius: 8px;
+    font-size: 13px;
     margin-bottom: 16px;
-    font-size: 14px;
     display: none;
 }
 
-.error-message.show {
-    display: block;
+.error-message.show { display: block; }
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
 }
 
-@media (max-width: 768px) {
-    .container {
-        padding: 16px;
-    }
-    
-    .header-content {
-        flex-direction: column;
-        gap: 16px;
-        align-items: flex-start;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .search-box {
-        width: 100%;
-    }
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+}
+
+.spinner {
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Inactive row styling */
+.row-inactive {
+    opacity: 0.7;
+    background-color: #f9fafb;
+}
+
+.row-inactive td {
+    color: #94a3b8;
 }
 </style>
 </head>
-<body>
 
+<body>
 <!-- Header -->
 <div class="header">
     <div class="header-content">
-        <div class="logo">
-            🏢 Hierarchy Manager
-        </div>
+        <div class="logo">Hierarchy Manager</div>
         <div class="header-actions">
-            <span class="user-email" id="userEmail">Loading...</span>
+            <button class="btn btn-outline btn-sm" onclick="window.location.href='/dashboard'">← Dashboard</button>
             <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
         </div>
     </div>
 </div>
 
 <div class="container">
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-label">Total Regions</div>
-            <div class="stat-value" id="totalRegions">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Total Clusters</div>
-            <div class="stat-value" id="totalClusters">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Total Branches</div>
-            <div class="stat-value" id="totalBranches">0</div>
-        </div>
-    </div>
-
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
-        <button class="nav-tab active" onclick="switchTab('regions')">Regions</button>
-        <button class="nav-tab" onclick="switchTab('clusters')">Clusters</button>
-        <button class="nav-tab" onclick="switchTab('branches')">Branches</button>
+        <button class="nav-tab active" onclick="switchTab('regions', this)">Regions</button>
+        <button class="nav-tab" onclick="switchTab('clusters', this)">Clusters</button>
+        <button class="nav-tab" onclick="switchTab('branches', this)">Branches</button>
     </div>
 
-    <!-- Regions Tab -->
-    <div id="regions" class="tab-content active">
+    <!-- REGIONS TAB -->
+    <div class="tab-content active" id="regions-tab">
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Regions</h2>
-                <button class="btn btn-primary" onclick="openRegionModal()">
-                    ➕ Add Region
-                </button>
+                <button class="btn btn-primary" onclick="openRegionModal()">+ Add Region</button>
             </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Region Name</th>
+                            <th>Name</th>
                             <th>Code</th>
                             <th>Status</th>
                             <th>Created</th>
@@ -524,65 +387,75 @@ td {
                         </tr>
                     </thead>
                     <tbody id="regionsTable">
-                        <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                        <tr>
+                            <td colspan="5" class="loading">
+                                <div class="spinner"></div>
+                                Loading regions...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Clusters Tab -->
-    <div id="clusters" class="tab-content">
+    <!-- CLUSTERS TAB -->
+    <div class="tab-content" id="clusters-tab">
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Clusters</h2>
-                <button class="btn btn-primary" onclick="openClusterModal()">
-                    ➕ Add Cluster
-                </button>
+                <button class="btn btn-primary" onclick="openClusterModal()">+ Add Cluster</button>
             </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Cluster Name</th>
+                            <th>Name</th>
                             <th>Code</th>
                             <th>Region</th>
                             <th>Status</th>
-                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="clustersTable">
-                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                        <tr>
+                            <td colspan="5" class="loading">
+                                <div class="spinner"></div>
+                                Loading clusters...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Branches Tab -->
-    <div id="branches" class="tab-content">
+    <!-- BRANCHES TAB -->
+    <div class="tab-content" id="branches-tab">
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Branches</h2>
-                <button class="btn btn-primary" onclick="openBranchModal()">
-                    ➕ Add Branch
-                </button>
+                <button class="btn btn-primary" onclick="openBranchModal()">+ Add Branch</button>
             </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Branch Name</th>
+                            <th>Name</th>
                             <th>Code</th>
                             <th>Cluster</th>
-                            <th>Region</th>
+                            <th>Location</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="branchesTable">
-                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                        <tr>
+                            <td colspan="6" class="loading">
+                                <div class="spinner"></div>
+                                Loading branches...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -590,8 +463,8 @@ td {
     </div>
 </div>
 
-<!-- Region Modal -->
-<div id="regionModal" class="modal">
+<!-- REGION MODAL -->
+<div class="modal" id="regionModal">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="regionModalTitle">Add Region</h3>
@@ -599,26 +472,26 @@ td {
         </div>
         <div class="modal-body">
             <div class="error-message" id="regionError"></div>
-            <form id="regionForm" onsubmit="event.preventDefault(); saveRegion();">
+            <form id="regionForm">
                 <div class="form-group">
-                    <label class="form-label">Region Name *</label>
-                    <input type="text" class="form-input" id="regionName" required minlength="3" maxlength="100">
+                    <label>Region Name *</label>
+                    <input type="text" id="regionName" placeholder="e.g., Andhra Pradesh" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Code *</label>
-                    <input type="text" class="form-input" id="regionCode" required minlength="2" maxlength="20">
+                    <label>Region Code *</label>
+                    <input type="text" id="regionCode" placeholder="e.g., AP" required />
                 </div>
             </form>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeRegionModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveRegion()">Save Region</button>
+            <button class="btn btn-primary" id="saveRegionBtn" onclick="saveRegion()">Save Region</button>
         </div>
     </div>
 </div>
 
-<!-- Cluster Modal -->
-<div id="clusterModal" class="modal">
+<!-- CLUSTER MODAL -->
+<div class="modal" id="clusterModal">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="clusterModalTitle">Add Cluster</h3>
@@ -626,18 +499,18 @@ td {
         </div>
         <div class="modal-body">
             <div class="error-message" id="clusterError"></div>
-            <form id="clusterForm" onsubmit="event.preventDefault(); saveCluster();">
+            <form id="clusterForm">
                 <div class="form-group">
-                    <label class="form-label">Cluster Name *</label>
-                    <input type="text" class="form-input" id="clusterName" required minlength="3" maxlength="100">
+                    <label>Cluster Name *</label>
+                    <input type="text" id="clusterName" placeholder="e.g., Vijayawada" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Code *</label>
-                    <input type="text" class="form-input" id="clusterCode" required minlength="2" maxlength="20">
+                    <label>Cluster Code *</label>
+                    <input type="text" id="clusterCode" placeholder="e.g., VJY" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Region *</label>
-                    <select class="form-select" id="clusterRegion" required>
+                    <label>Region *</label>
+                    <select id="clusterRegion" required>
                         <option value="">Select Region</option>
                     </select>
                 </div>
@@ -645,13 +518,13 @@ td {
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeClusterModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveCluster()">Save Cluster</button>
+            <button class="btn btn-primary" id="saveClusterBtn" onclick="saveCluster()">Save Cluster</button>
         </div>
     </div>
 </div>
 
-<!-- Branch Modal -->
-<div id="branchModal" class="modal">
+<!-- BRANCH MODAL -->
+<div class="modal" id="branchModal">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="branchModalTitle">Add Branch</h3>
@@ -659,143 +532,78 @@ td {
         </div>
         <div class="modal-body">
             <div class="error-message" id="branchError"></div>
-            <form id="branchForm" onsubmit="event.preventDefault(); saveBranch();">
+            <form id="branchForm">
                 <div class="form-group">
-                    <label class="form-label">Branch Name *</label>
-                    <input type="text" class="form-input" id="branchName" required minlength="3" maxlength="100">
+                    <label>Branch Name *</label>
+                    <input type="text" id="branchName" placeholder="e.g., Main Branch" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Code *</label>
-                    <input type="text" class="form-input" id="branchCode" required minlength="2" maxlength="20">
+                    <label>Branch Code *</label>
+                    <input type="text" id="branchCode" placeholder="e.g., MB01" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Cluster *</label>
-                    <select class="form-select" id="branchCluster" required>
+                    <label>Cluster *</label>
+                    <select id="branchCluster" required>
                         <option value="">Select Cluster</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Location</label>
-                    <textarea class="form-textarea" id="branchLocation" maxlength="200"></textarea>
+                    <label>Location (Optional)</label>
+                    <textarea id="branchLocation" placeholder="Branch address"></textarea>
                 </div>
             </form>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeBranchModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveBranch()">Save Branch</button>
+            <button class="btn btn-primary" id="saveBranchBtn" onclick="saveBranch()">Save Branch</button>
         </div>
     </div>
 </div>
 
 <script>
-// ============================================
-// CONFIGURATION & STATE
-// ============================================
-
-const API = window.location.origin;
+// API Configuration
+const API_BASE = window.location.origin;
+let currentEditId = null;
 let regionsData = [];
 let clustersData = [];
 let branchesData = [];
-let currentEditId = null;
 
-// ============================================
-// AUTH FUNCTIONS
-// ============================================
-
+// Auth Headers
 function getHeaders() {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
     };
 }
 
+// Check Auth
 function checkAuth() {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/login.html';
+        window.location.href = '/';
         return false;
     }
     return true;
 }
 
+// Logout
 function logout() {
-    localStorage.removeItem('access_token');
-    window.location.href = '/login.html';
+    localStorage.removeItem('token');
+    window.location.href = '/';
 }
 
-function loadUserInfo() {
-    const email = localStorage.getItem('user_email');
-    if (email) {
-        document.getElementById('userEmail').textContent = email;
-    }
-}
-
-// ============================================
-// TAB SWITCHING
-// ============================================
-
-function switchTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    event.target.classList.add('active');
-
-    // Update tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    document.getElementById(tabName).classList.add('active');
-}
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-function buildPatchPayload(original, updated) {
-    const payload = {};
-    for (const key in updated) {
-        if (updated[key] !== original[key]) {
-            payload[key] = updated[key];
-        }
-    }
-    return payload;
-}
-
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function updateStats() {
-    document.getElementById('totalRegions').textContent = regionsData.filter(r => r.is_active).length;
-    document.getElementById('totalClusters').textContent = clustersData.filter(c => c.is_active).length;
-    document.getElementById('totalBranches').textContent = branchesData.filter(b => b.is_active).length;
-}
-
-function showError(tableId, message) {
-    document.getElementById(tableId).innerHTML = `
-        <tr>
-            <td colspan="6" style="text-align: center; color: var(--danger); padding: 40px;">
-                ⚠️ ${message}
-            </td>
-        </tr>
-    `;
-}
-
-function showModalError(errorId, message) {
-    const errorEl = document.getElementById(errorId);
-    errorEl.textContent = message;
-    errorEl.classList.add('show');
-}
-
-function hideModalError(errorId) {
-    const errorEl = document.getElementById(errorId);
-    errorEl.classList.remove('show');
+// Tab Switching
+function switchTab(tab, el) {
+    document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+    el.classList.add('active');
+    
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`${tab}-tab`).classList.add('active');
+    
+    if (tab === 'regions') loadRegions();
+    else if (tab === 'clusters') loadClusters();
+    else if (tab === 'branches') loadBranches();
 }
 
 // ============================================
@@ -804,12 +612,11 @@ function hideModalError(errorId) {
 
 async function loadRegions() {
     try {
-        const res = await fetch(`${API}/api/regions`, { headers: getHeaders() });
-        if (!res.ok) throw new Error('Failed to load');
+        const res = await fetch(`${API_BASE}/api/regions`, { headers: getHeaders() });
+        if (!res.ok) throw new Error('Failed to load regions');
         
         regionsData = await res.json();
         renderRegions(regionsData);
-        updateStats();
     } catch (err) {
         showError('regionsTable', 'Failed to load regions');
     }
@@ -819,32 +626,31 @@ function renderRegions(regions) {
     const tbody = document.getElementById('regionsTable');
 
     if (regions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No regions yet. Click "Add Region" to create one.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No regions yet.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = regions.map(r => `
-        <tr>
-            <td>
-                <div class="entity-name">${r.name}</div>
-            </td>
+    tbody.innerHTML = regions.map(r => {
+        const rowClass = r.is_active ? '' : 'row-inactive';
+        return `
+        <tr class="${rowClass}">
+            <td>${r.name}</td>
             <td><strong>${r.code}</strong></td>
-            <td>
-                <span class="badge ${r.is_active ? 'badge-active' : 'badge-inactive'}">
-                    ${r.is_active ? 'Active' : 'Inactive'}
-                </span>
-            </td>
-            <td>${formatDate(r.created_at)}</td>
+            <td><span class="badge ${r.is_active ? 'badge-active' : 'badge-inactive'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>${new Date(r.created_at).toLocaleDateString()}</td>
             <td>
                 <div class="actions">
+                    <!-- Edit -->
                     <button class="icon-btn" title="Edit Region" onclick="editRegion(${r.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
                         </svg>
                     </button>
+
+                    <!-- Activate / Deactivate -->
                     <button class="icon-btn" 
-                        title="${r.is_active ? 'Deactivate' : 'Activate'} Region"
+                        title="${r.is_active ? 'Deactivate Region' : 'Activate Region'}"
                         onclick="toggleRegionStatus(${r.id}, ${r.is_active})">
                         ${r.is_active ? `
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -857,16 +663,14 @@ function renderRegions(regions) {
                     </button>
                 </div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 function openRegionModal(editId = null) {
     currentEditId = editId;
     const modal = document.getElementById('regionModal');
     const title = document.getElementById('regionModalTitle');
-    
-    hideModalError('regionError');
     
     if (editId) {
         const region = regionsData.find(r => r.id === editId);
@@ -883,7 +687,7 @@ function openRegionModal(editId = null) {
 
 function closeRegionModal() {
     document.getElementById('regionModal').classList.remove('show');
-    hideModalError('regionError');
+    document.getElementById('regionError').classList.remove('show');
     currentEditId = null;
 }
 
@@ -898,43 +702,23 @@ async function saveRegion() {
 
     try {
         if (currentEditId) {
-            // Update existing region
-            const original = regionsData.find(r => r.id === currentEditId);
-            const payload = buildPatchPayload(original, { name, code });
-
-            if (Object.keys(payload).length === 0) {
-                closeRegionModal();
-                return;
-            }
-
-            const res = await fetch(`${API}/api/regions/${currentEditId}`, {
+            await fetch(`${API_BASE}/api/regions/${currentEditId}`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ name, code })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to update region');
-            }
         } else {
-            // Create new region
-            const res = await fetch(`${API}/api/regions`, {
+            await fetch(`${API_BASE}/api/regions`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({ name, code })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to create region');
-            }
         }
 
         closeRegionModal();
         loadRegions();
     } catch (err) {
-        showModalError('regionError', err.message);
+        showModalError('regionError', 'Failed to save region');
     }
 }
 
@@ -944,16 +728,16 @@ function editRegion(id) {
 
 async function toggleRegionStatus(id, currentStatus) {
     try {
-        const res = await fetch(`${API}/api/regions/${id}`, {
+        const res = await fetch(`${API_BASE}/api/regions/${id}`, {
             method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });
         
-        if (!res.ok) throw new Error('Failed to update status');
+        if (!res.ok) throw new Error('Failed');
         loadRegions();
     } catch (err) {
-        alert('Failed to update region status');
+        alert('Failed to update status');
     }
 }
 
@@ -963,12 +747,11 @@ async function toggleRegionStatus(id, currentStatus) {
 
 async function loadClusters() {
     try {
-        const res = await fetch(`${API}/api/clusters`, { headers: getHeaders() });
-        if (!res.ok) throw new Error('Failed to load');
+        const res = await fetch(`${API_BASE}/api/clusters`, { headers: getHeaders() });
+        if (!res.ok) throw new Error('Failed to load clusters');
         
         clustersData = await res.json();
         renderClusters(clustersData);
-        updateStats();
     } catch (err) {
         showError('clustersTable', 'Failed to load clusters');
     }
@@ -978,35 +761,32 @@ function renderClusters(clusters) {
     const tbody = document.getElementById('clustersTable');
 
     if (clusters.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No clusters yet. Click "Add Cluster" to create one.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No clusters yet.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = clusters.map(c => {
         const region = regionsData.find(r => r.id === c.region_id);
+        const rowClass = c.is_active ? '' : 'row-inactive';
         return `
-        <tr>
-            <td>
-                <div class="entity-name">${c.name}</div>
-            </td>
+        <tr class="${rowClass}">
+            <td>${c.name}</td>
             <td><strong>${c.code}</strong></td>
             <td>${region ? region.name : '—'}</td>
-            <td>
-                <span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">
-                    ${c.is_active ? 'Active' : 'Inactive'}
-                </span>
-            </td>
-            <td>${formatDate(c.created_at)}</td>
+            <td><span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
             <td>
                 <div class="actions">
+                    <!-- Edit -->
                     <button class="icon-btn" title="Edit Cluster" onclick="editCluster(${c.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
                         </svg>
                     </button>
+
+                    <!-- Activate / Deactivate -->
                     <button class="icon-btn" 
-                        title="${c.is_active ? 'Deactivate' : 'Activate'} Cluster"
+                        title="${c.is_active ? 'Deactivate Cluster' : 'Activate Cluster'}"
                         onclick="toggleClusterStatus(${c.id}, ${c.is_active})">
                         ${c.is_active ? `
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1028,19 +808,14 @@ async function openClusterModal(editId = null) {
     const modal = document.getElementById('clusterModal');
     const title = document.getElementById('clusterModalTitle');
     
-    hideModalError('clusterError');
-    
-    // Load regions for dropdown if needed
+    // Load regions for dropdown
     if (regionsData.length === 0) {
         await loadRegions();
     }
     
     const regionSelect = document.getElementById('clusterRegion');
     regionSelect.innerHTML = '<option value="">Select Region</option>' + 
-        regionsData
-            .filter(r => r.is_active)
-            .map(r => `<option value="${r.id}">${r.name}</option>`)
-            .join('');
+        regionsData.map(r => `<option value="${r.id}">${r.name}${!r.is_active ? ' (Inactive)' : ''}</option>`).join('');
     
     if (editId) {
         const cluster = clustersData.find(c => c.id === editId);
@@ -1058,7 +833,7 @@ async function openClusterModal(editId = null) {
 
 function closeClusterModal() {
     document.getElementById('clusterModal').classList.remove('show');
-    hideModalError('clusterError');
+    document.getElementById('clusterError').classList.remove('show');
     currentEditId = null;
 }
 
@@ -1074,43 +849,23 @@ async function saveCluster() {
 
     try {
         if (currentEditId) {
-            // Update existing cluster
-            const original = clustersData.find(c => c.id === currentEditId);
-            const payload = buildPatchPayload(original, { name, code, region_id });
-
-            if (Object.keys(payload).length === 0) {
-                closeClusterModal();
-                return;
-            }
-
-            const res = await fetch(`${API}/api/clusters/${currentEditId}`, {
+            await fetch(`${API_BASE}/api/clusters/${currentEditId}`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ name, code, region_id })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to update cluster');
-            }
         } else {
-            // Create new cluster
-            const res = await fetch(`${API}/api/clusters`, {
+            await fetch(`${API_BASE}/api/clusters`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({ name, code, region_id })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to create cluster');
-            }
         }
 
         closeClusterModal();
         loadClusters();
     } catch (err) {
-        showModalError('clusterError', err.message);
+        showModalError('clusterError', 'Failed to save cluster');
     }
 }
 
@@ -1120,16 +875,16 @@ function editCluster(id) {
 
 async function toggleClusterStatus(id, currentStatus) {
     try {
-        const res = await fetch(`${API}/api/clusters/${id}`, {
+        const res = await fetch(`${API_BASE}/api/clusters/${id}`, {
             method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });
         
-        if (!res.ok) throw new Error('Failed to update status');
+        if (!res.ok) throw new Error('Failed');
         loadClusters();
     } catch (err) {
-        alert('Failed to update cluster status');
+        alert('Failed to update status');
     }
 }
 
@@ -1139,12 +894,11 @@ async function toggleClusterStatus(id, currentStatus) {
 
 async function loadBranches() {
     try {
-        const res = await fetch(`${API}/api/branches`, { headers: getHeaders() });
-        if (!res.ok) throw new Error('Failed to load');
+        const res = await fetch(`${API_BASE}/api/branches`, { headers: getHeaders() });
+        if (!res.ok) throw new Error('Failed to load branches');
         
         branchesData = await res.json();
         renderBranches(branchesData);
-        updateStats();
     } catch (err) {
         showError('branchesTable', 'Failed to load branches');
     }
@@ -1154,38 +908,33 @@ function renderBranches(branches) {
     const tbody = document.getElementById('branchesTable');
 
     if (branches.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No branches yet. Click "Add Branch" to create one.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No branches yet.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = branches.map(b => {
         const cluster = clustersData.find(c => c.id === b.cluster_id);
-        const region = cluster ? regionsData.find(r => r.id === cluster.region_id) : null;
-
+        const rowClass = b.is_active ? '' : 'row-inactive';
         return `
-        <tr>
-            <td>
-                <div class="entity-name">${b.name}</div>
-                ${b.location ? `<span class="entity-meta">${b.location}</span>` : ''}
-            </td>
+        <tr class="${rowClass}">
+            <td>${b.name}</td>
             <td><strong>${b.code}</strong></td>
             <td>${cluster ? cluster.name : '—'}</td>
-            <td>${region ? region.name : '—'}</td>
-            <td>
-                <span class="badge ${b.is_active ? 'badge-active' : 'badge-inactive'}">
-                    ${b.is_active ? 'Active' : 'Inactive'}
-                </span>
-            </td>
+            <td>${b.location || '—'}</td>
+            <td><span class="badge ${b.is_active ? 'badge-active' : 'badge-inactive'}">${b.is_active ? 'Active' : 'Inactive'}</span></td>
             <td>
                 <div class="actions">
+                    <!-- Edit -->
                     <button class="icon-btn" title="Edit Branch" onclick="editBranch(${b.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
                         </svg>
                     </button>
+
+                    <!-- Activate / Deactivate -->
                     <button class="icon-btn" 
-                        title="${b.is_active ? 'Deactivate' : 'Activate'} Branch"
+                        title="${b.is_active ? 'Deactivate Branch' : 'Activate Branch'}"
                         onclick="toggleBranchStatus(${b.id}, ${b.is_active})">
                         ${b.is_active ? `
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1196,6 +945,8 @@ function renderBranches(branches) {
                             <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>`}
                     </button>
+
+                    <!-- Delete -->
                     <button class="icon-btn delete" title="Delete Branch" onclick="deleteBranch(${b.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <polyline points="3 6 5 6 21 6"/>
@@ -1215,22 +966,18 @@ async function openBranchModal(editId = null) {
     const modal = document.getElementById('branchModal');
     const title = document.getElementById('branchModalTitle');
     
-    hideModalError('branchError');
-    
-    // Load clusters for dropdown if needed
+    // Load clusters for dropdown
     if (clustersData.length === 0) {
         await loadClusters();
     }
     
     const clusterSelect = document.getElementById('branchCluster');
     clusterSelect.innerHTML = '<option value="">Select Cluster</option>' + 
-        clustersData
-            .filter(c => c.is_active)
-            .map(c => {
-                const region = regionsData.find(r => r.id === c.region_id);
-                return `<option value="${c.id}">${c.name} (${region ? region.name : '—'})</option>`;
-            })
-            .join('');
+        clustersData.map(c => {
+            const region = regionsData.find(r => r.id === c.region_id);
+            const inactiveLabel = !c.is_active ? ' (Inactive)' : '';
+            return `<option value="${c.id}">${c.name} - ${region ? region.name : 'N/A'}${inactiveLabel}</option>`;
+        }).join('');
     
     if (editId) {
         const branch = branchesData.find(b => b.id === editId);
@@ -1249,7 +996,7 @@ async function openBranchModal(editId = null) {
 
 function closeBranchModal() {
     document.getElementById('branchModal').classList.remove('show');
-    hideModalError('branchError');
+    document.getElementById('branchError').classList.remove('show');
     currentEditId = null;
 }
 
@@ -1266,53 +1013,23 @@ async function saveBranch() {
 
     try {
         if (currentEditId) {
-            // Update existing branch
-            const original = branchesData.find(b => b.id === currentEditId);
-            const payload = buildPatchPayload(original, {
-                name,
-                code,
-                cluster_id,
-                location: location || null
-            });
-
-            if (Object.keys(payload).length === 0) {
-                closeBranchModal();
-                return;
-            }
-
-            const res = await fetch(`${API}/api/branches/${currentEditId}`, {
+            await fetch(`${API_BASE}/api/branches/${currentEditId}`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ name, code, cluster_id, location: location || null })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to update branch');
-            }
         } else {
-            // Create new branch
-            const res = await fetch(`${API}/api/branches`, {
+            await fetch(`${API_BASE}/api/branches`, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({
-                    name,
-                    code,
-                    cluster_id,
-                    location: location || null
-                })
+                body: JSON.stringify({ name, code, cluster_id, location: location || null })
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'Failed to create branch');
-            }
         }
 
         closeBranchModal();
         loadBranches();
     } catch (err) {
-        showModalError('branchError', err.message);
+        showModalError('branchError', 'Failed to save branch');
     }
 }
 
@@ -1322,33 +1039,51 @@ function editBranch(id) {
 
 async function toggleBranchStatus(id, currentStatus) {
     try {
-        const res = await fetch(`${API}/api/branches/${id}`, {
+        const res = await fetch(`${API_BASE}/api/branches/${id}`, {
             method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ is_active: !currentStatus })
         });
         
-        if (!res.ok) throw new Error('Failed to update status');
+        if (!res.ok) throw new Error('Failed');
         loadBranches();
     } catch (err) {
-        alert('Failed to update branch status');
+        alert('Failed to update status');
     }
 }
 
 async function deleteBranch(id) {
-    if (!confirm('Are you sure you want to deactivate this branch? This action will mark it as inactive.')) return;
+    if (!confirm('Are you sure you want to delete this branch? This action cannot be undone.')) return;
     
     try {
-        const res = await fetch(`${API}/api/branches/${id}`, {
+        const res = await fetch(`${API_BASE}/api/branches/${id}`, {
             method: 'DELETE',
             headers: getHeaders()
         });
         
-        if (!res.ok) throw new Error('Failed to delete branch');
+        if (!res.ok) throw new Error('Failed');
         loadBranches();
     } catch (err) {
         alert('Failed to delete branch');
     }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function showError(tableId, message) {
+    document.getElementById(tableId).innerHTML = `
+        <tr>
+            <td colspan="6" class="empty-state">⚠️ ${message}</td>
+        </tr>
+    `;
+}
+
+function showModalError(errorId, message) {
+    const errorEl = document.getElementById(errorId);
+    errorEl.textContent = message;
+    errorEl.classList.add('show');
 }
 
 // ============================================
@@ -1358,27 +1093,29 @@ async function deleteBranch(id) {
 document.addEventListener('DOMContentLoaded', async () => {
     if (!checkAuth()) return;
 
-    loadUserInfo();
-
-    // Load all data
     try {
+        // Load all data on startup
         const [regionsRes, clustersRes, branchesRes] = await Promise.all([
-            fetch(`${API}/api/regions`, { headers: getHeaders() }),
-            fetch(`${API}/api/clusters`, { headers: getHeaders() }),
-            fetch(`${API}/api/branches`, { headers: getHeaders() })
+            fetch(`${API_BASE}/api/regions`, { headers: getHeaders() }),
+            fetch(`${API_BASE}/api/clusters`, { headers: getHeaders() }),
+            fetch(`${API_BASE}/api/branches`, { headers: getHeaders() })
         ]);
+
+        if (!regionsRes.ok || !clustersRes.ok || !branchesRes.ok) {
+            throw new Error('Failed to load data');
+        }
 
         regionsData = await regionsRes.json();
         clustersData = await clustersRes.json();
         branchesData = await branchesRes.json();
 
-        updateStats();
+        // Render initial tab (Regions)
         renderRegions(regionsData);
     } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Initialization error:', err);
+        showError('regionsTable', 'Failed to load data');
     }
 });
-
 </script>
 </body>
 </html>

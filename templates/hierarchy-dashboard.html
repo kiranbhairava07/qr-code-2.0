@@ -79,6 +79,16 @@ body{
     cursor:pointer;
 }
 
+.date-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+}
+
 .btn{
     padding:8px 16px;
     border:1px solid var(--border);
@@ -616,6 +626,13 @@ td{
             <p class="subtitle" id="pageSubtitle">ENTERPRISE PERFORMANCE</p>
         </div>
         <div class="header-filters">
+            <!-- Date Range Filters -->
+            <input type="date" id="startDate" class="date-input" title="Start Date">
+            <input type="date" id="endDate" class="date-input" title="End Date">
+            <button class="btn" onclick="applyDateFilter()">Apply</button>
+            <button class="btn" onclick="resetDateFilter()">Reset</button>
+            
+            <!-- Existing Filters -->
             <select id="regionFilter" onchange="onRegionChange()">
                 <option value="">All Regions</option>
             </select>
@@ -625,9 +642,9 @@ td{
             <select id="branchFilter" onchange="onBranchChange()">
                 <option value="">All Branches</option>
             </select>
-            <button class="btn btn-primary export-btn" onclick="exportPDF()" id="exportBtn" style="display:none;">
-                Export PDF
-            </button>
+            
+            <!-- Export Button -->
+            <button class="btn btn-primary" onclick="exportData()">📥 Export CSV</button>
             <a href="/dashboard" class="btn">← Dashboard</a>
         </div>
     </div>
@@ -656,6 +673,69 @@ let charts = {
     donut: null,
     userPie: null
 };
+
+// Date filter state
+let dateRange = { start: null, end: null };
+
+// Apply date filter
+async function applyDateFilter() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    
+    if (start && end && start > end) {
+        alert('Start date must be before end date');
+        return;
+    }
+    
+    dateRange = { start, end };
+    await loadHierarchyAnalytics();
+}
+
+// Reset date filter
+async function resetDateFilter() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    dateRange = { start: null, end: null };
+    await loadHierarchyAnalytics();
+}
+
+// Export current data as CSV
+function exportData() {
+    if (!currentData) {
+        alert('No data to export');
+        return;
+    }
+    
+    const rows = [['Level', 'Name', 'QR Scans', 'Social Clicks', 'Total', 'New Users', 'Returning Users']];
+    
+    // Determine data structure and export
+    if (Array.isArray(currentData)) {
+        currentData.forEach(item => {
+            const name = item.region_name || item.cluster_name || item.branch_name || 'Unknown';
+            rows.push([
+                item.region_name ? 'Region' : item.cluster_name ? 'Cluster' : 'Branch',
+                name,
+                item.total_qr_scans || 0,
+                item.total_social_clicks || 0,
+                item.combined_total || 0,
+                item.new_vs_returning?.new_users || 0,
+                item.new_vs_returning?.returning_users || 0
+            ]);
+        });
+    }
+    
+    // Convert to CSV
+    const csv = rows.map(row => row.join(',')).join('\n');
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hierarchy_analytics_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
 
 if (!token) window.location.href = '/';
 
@@ -859,6 +939,13 @@ async function getBranchQRId() {
     }
 }
 
+function buildDateParams() {
+    const params = new URLSearchParams();
+    if (dateRange.start) params.append('start_date', dateRange.start);
+    if (dateRange.end) params.append('end_date', dateRange.end);
+    return params.toString() ? `?${params.toString()}` : '';
+}
+
 async function loadHierarchyAnalytics() {
     const regionId = document.getElementById('regionFilter').value;
     const clusterId = document.getElementById('clusterFilter').value;
@@ -866,16 +953,21 @@ async function loadHierarchyAnalytics() {
     let data;
     let viewLevel = 'regions';
     
+    // Build date parameters
+    const dateParams = buildDateParams();
+    
     if (clusterId) {
         // Cluster level
-        data = await api(`/analytics/clusters/${clusterId}?include_branches=true`);
+        const url = `/analytics/clusters/${clusterId}?include_branches=true${dateParams ? '&' + dateParams.substring(1) : ''}`;
+        data = await api(url);
         const cluster = clusters.find(c => c.id == clusterId);
         document.getElementById('pageTitle').textContent = `${cluster.name} Analytics`;
         document.getElementById('pageSubtitle').textContent = 'CLUSTER PERFORMANCE';
         viewLevel = 'cluster';
     } else if (regionId) {
         // Single region
-        data = await api(`/analytics/regions?include_details=true`);
+        const url = `/analytics/regions?include_details=true${dateParams}`;
+        data = await api(url);
         data = data.filter(r => r.region_id == regionId);
         const region = regions.find(r => r.id == regionId);
         document.getElementById('pageTitle').textContent = `${region.name} Analytics`;
@@ -883,7 +975,8 @@ async function loadHierarchyAnalytics() {
         viewLevel = 'region';
     } else {
         // All regions
-        data = await api('/analytics/regions?include_details=true');
+        const url = `/analytics/regions?include_details=true${dateParams}`;
+        data = await api(url);
         document.getElementById('pageTitle').textContent = 'Region Analytics & Trends';
         document.getElementById('pageSubtitle').textContent = 'ENTERPRISE PERFORMANCE';
         viewLevel = 'regions';

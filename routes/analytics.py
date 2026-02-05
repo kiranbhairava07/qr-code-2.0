@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, case
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -42,8 +42,8 @@ async def calculate_new_vs_returning_bulk(
     qr_stmt = (
         select(
             Cluster.region_id,
-            func.sum(func.case((QRScan.is_new_user == True, 1), else_=0)).label("new_users"),
-            func.sum(func.case((QRScan.is_new_user == False, 1), else_=0)).label("returning_users"),
+            func.sum(case((QRScan.is_new_user == True, 1), else_=0)).label("new_users"),
+            func.sum(case((QRScan.is_new_user == False, 1), else_=0)).label("returning_users"),
         )
         .join(QRCode, QRCode.id == QRScan.qr_code_id)
         .join(Branch, Branch.id == QRCode.branch_id)
@@ -61,8 +61,8 @@ async def calculate_new_vs_returning_bulk(
     social_stmt = (
         select(
             Cluster.region_id,
-            func.sum(func.case((SocialClick.is_new_user == True, 1), else_=0)).label("new_users"),
-            func.sum(func.case((SocialClick.is_new_user == False, 1), else_=0)).label("returning_users"),
+            func.sum(case((SocialClick.is_new_user == True, 1), else_=0)).label("new_users"),
+            func.sum(case((SocialClick.is_new_user == False, 1), else_=0)).label("returning_users"),
         )
         .join(Branch, Branch.id == SocialClick.branch_id)
         .join(Cluster, Cluster.id == Branch.cluster_id)

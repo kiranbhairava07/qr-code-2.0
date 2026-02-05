@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def generate_session_id(ip: str, user_agent: str) -> str:
-    """Generate consistent session ID from IP and user agent"""
+    """Generate consistent session ID from IP and user agent - BACKEND FALLBACK"""
     data = f"{ip}:{user_agent}"
     return hashlib.sha256(data.encode()).hexdigest()[:32]
 
@@ -131,20 +131,14 @@ async def redirect_qr(
         const TARGET_URL = "{redirect_url}";
         const API = "{settings.BASE_URL}";
         
-        // FIXED: Use localStorage for stable session ID
+        // Frontend generates session ID (backend will use IP+UA as fallback)
         function getSessionId() {{
             let sessionId = localStorage.getItem('qr_session_id');
             if (!sessionId) {{
-                sessionId = generateSessionId();
+                sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
                 localStorage.setItem('qr_session_id', sessionId);
             }}
             return sessionId;
-        }}
-        
-        function generateSessionId() {{
-            const timestamp = Date.now().toString(36);
-            const random = Math.random().toString(36).substring(2, 15);
-            return timestamp + random;
         }}
         
         async function logScan(lat, lon, accuracy) {{
@@ -216,9 +210,17 @@ async def log_scan(
         longitude = data.get("longitude")
         accuracy = data.get("accuracy")
         user_agent = data.get("user_agent", "")
-        session_id = data.get("session_id", str(uuid.uuid4()))
+        frontend_session = data.get("session_id", "")
         
         ip_address = request.client.host if request.client else None
+        
+        # SIMPLE ELEGANT FIX: Use backend IP+UA hash if frontend session fails
+        if frontend_session and len(frontend_session) > 10:
+            session_id = frontend_session
+        else:
+            session_id = generate_session_id(ip_address or "unknown", user_agent)
+            logger.info(f"Using backend session ID (localStorage failed): {session_id[:16]}...")
+        
         device_info = parse_device_info(user_agent)
         
         # Check if new user

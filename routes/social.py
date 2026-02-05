@@ -5,6 +5,7 @@ from sqlalchemy import select, func
 from pathlib import Path
 from typing import Optional
 import logging
+import hashlib
 
 from database import get_db
 from models import SocialClick, QRCode, QRScan
@@ -14,6 +15,13 @@ router = APIRouter(tags=["Social Links"])
 logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path("templates/social")
+
+
+def generate_session_id(ip: str, user_agent: str) -> str:
+    """Generate consistent session ID from IP and user agent - BACKEND FALLBACK"""
+    data = f"{ip}:{user_agent}"
+    return hashlib.sha256(data.encode()).hexdigest()[:32]
+
 
 @router.get("/social-links", response_class=HTMLResponse)
 async def social_links_page(
@@ -87,8 +95,18 @@ async def log_social_click(
         data = await request.json()
         platform = data.get("platform", "unknown")
         branch_code = data.get("branch_code")
-        session_id = data.get("session_id", "")
+        frontend_session = data.get("session_id", "")
         user_agent = request.headers.get("user-agent", "")
+        
+        # Get IP address
+        ip_address = request.client.host if request.client else None
+        
+        # SIMPLE ELEGANT FIX: Use backend IP+UA hash if frontend session fails
+        if frontend_session and len(frontend_session) > 10:
+            session_id = frontend_session
+        else:
+            session_id = generate_session_id(ip_address or "unknown", user_agent)
+            logger.info(f"Using backend session ID for social click (localStorage failed): {session_id[:16]}...")
         
         # Get branch_id from QR code
         branch_id = None
@@ -98,9 +116,6 @@ async def log_social_click(
             )
             branch_id = result.scalar_one_or_none()
         
-        # Get IP address
-        ip_address = request.client.host if request.client else None
-        
         # Parse device info
         device_info = parse_device_info(user_agent)
         
@@ -108,7 +123,7 @@ async def log_social_click(
         location_data = await get_location_from_ip(ip_address)
         
         # Check if new user
-        is_new = await is_new_user(db, session_id) if session_id else True
+        is_new = await is_new_user(db, session_id)
         
         # Create click record
         click = SocialClick(
@@ -129,7 +144,7 @@ async def log_social_click(
         await db.commit()
         
         user_type = "New" if is_new else "Returning"
-        logger.info(f"Social click logged: {platform} from branch_id={branch_id}, {user_type} user")
+        logger.info(f"Social click logged: {platform} from branch_id={branch_id}, {user_type} user, Session: {session_id[:16]}...")
         
         return {"status": "success", "is_new_user": is_new}
         

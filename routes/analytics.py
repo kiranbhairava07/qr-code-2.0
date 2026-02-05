@@ -271,7 +271,7 @@ async def get_region_analytics(
             clusters = clusters_result.scalars().all()
 
             for cluster in clusters:
-                cluster_analytics = await get_cluster_analytics_internal(
+                cluster_analytics = await get_cluster_analytics_bulk(
                     db=db,
                     cluster=cluster,  # ✅ PASS CLUSTER OBJECT
                     start_date=start_date,
@@ -288,122 +288,130 @@ async def get_region_analytics(
 # ============================================
 # CLUSTER ANALYTICS
 # ============================================
-async def get_cluster_analytics_internal(
+async def get_cluster_analytics_bulk(
     db: AsyncSession,
-    cluster: Cluster,
+    region_ids: List[int],
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     include_branches: bool = False
-) -> ClusterAnalytics:
-    """Internal function to get cluster analytics"""
-    
-    # Build date filters for both QR and Social
-    qr_date_filters = []
-    social_date_filters = []
-    
+) -> dict[int, List[ClusterAnalytics]]:
+
+    qr_filters, social_filters = [], []
+
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date)
-            qr_date_filters.append(QRScan.scanned_at >= start_dt)
-            social_date_filters.append(SocialClick.clicked_at >= start_dt)
+            dt = datetime.fromisoformat(start_date)
+            qr_filters.append(QRScan.scanned_at >= dt)
+            social_filters.append(SocialClick.clicked_at >= dt)
         except ValueError:
             pass
-    
+
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
-            qr_date_filters.append(QRScan.scanned_at <= end_dt)
-            social_date_filters.append(SocialClick.clicked_at <= end_dt)
+            dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
+            qr_filters.append(QRScan.scanned_at <= dt)
+            social_filters.append(SocialClick.clicked_at <= dt)
         except ValueError:
             pass
-    
-    # Get all branches in this cluster
-    branch_ids_query = select(Branch.id).where(
-        Branch.cluster_id == cluster.id,
-        Branch.is_active == True
+
+    clusters = (await db.execute(
+        select(Cluster).where(Cluster.region_id.in_(region_ids), Cluster.is_active == True)
+    )).scalars().all()
+
+    cluster_map = {c.id: c for c in clusters}
+    clusters_by_region = {}
+    for c in clusters:
+        clusters_by_region.setdefault(c.region_id, []).append(c.id)
+
+    if not cluster_map:
+        return {}
+
+    # QR counts
+    qr_stmt = (
+        select(Branch.cluster_id, func.count(QRScan.id))
+        .join(QRCode, QRCode.id == QRScan.qr_code_id)
+        .join(Branch, Branch.id == QRCode.branch_id)
+        .where(Branch.cluster_id.in_(cluster_map.keys()))
+        .group_by(Branch.cluster_id)
     )
-    branch_ids_result = await db.execute(branch_ids_query)
-    branch_ids = [row[0] for row in branch_ids_result.all()]
-    
-    if not branch_ids:
-        # Return empty analytics if no branches
-        return ClusterAnalytics(
-            cluster_id=cluster.id,
-            cluster_name=cluster.name,
-            region_id=cluster.region_id,
-            total_qr_scans=0,
-            total_social_clicks=0,
-            combined_total=0,
-            new_vs_returning=NewVsReturning(
-                new_users=0,
-                returning_users=0,
-                new_percentage=0.0,
-                returning_percentage=0.0
-            ),
-            branches=[]
+    if qr_filters:
+        qr_stmt = qr_stmt.where(and_(*qr_filters))
+    qr_counts = dict((await db.execute(qr_stmt)).all())
+
+    # Social counts
+    social_stmt = (
+        select(Branch.cluster_id, func.count(SocialClick.id))
+        .join(Branch, Branch.id == SocialClick.branch_id)
+        .where(Branch.cluster_id.in_(cluster_map.keys()))
+        .group_by(Branch.cluster_id)
+    )
+    if social_filters:
+        social_stmt = social_stmt.where(and_(*social_filters))
+    social_counts = dict((await db.execute(social_stmt)).all())
+
+    # New vs Returning
+    nvr_stmt_qr = (
+        select(
+            Branch.cluster_id,
+            func.sum(case((QRScan.is_new_user == True, 1), else_=0)),
+            func.sum(case((QRScan.is_new_user == False, 1), else_=0)),
         )
-    
-    # QR Scans
-    qr_query = select(func.count(QRScan.id)).join(QRCode).where(
-        QRCode.branch_id.in_(branch_ids)
+        .join(QRCode, QRCode.id == QRScan.qr_code_id)
+        .join(Branch, Branch.id == QRCode.branch_id)
+        .where(Branch.cluster_id.in_(cluster_map.keys()))
+        .group_by(Branch.cluster_id)
     )
-    if qr_date_filters:
-        qr_query = qr_query.where(and_(*qr_date_filters))
-    
-    total_qr_scans = (await db.execute(qr_query)).scalar() or 0
-    
-    # Social Clicks
-    social_query = select(func.count(SocialClick.id)).where(
-        SocialClick.branch_id.in_(branch_ids)
-    )
-    if social_date_filters:
-        social_query = social_query.where(and_(*social_date_filters))
-    
-    total_social_clicks = (await db.execute(social_query)).scalar() or 0
-    
-    # New vs Returning - BUILD QUERY OBJECTS, NOT FILTER LISTS
-    qr_base_query = select(QRScan).join(QRCode).where(QRCode.branch_id.in_(branch_ids))
-    social_base_query = select(SocialClick).where(SocialClick.branch_id.in_(branch_ids))
-    
-    # Add date filters if they exist
-    if qr_date_filters:
-        qr_base_query = qr_base_query.where(and_(*qr_date_filters))
-    
-    if social_date_filters:
-        social_base_query = social_base_query.where(and_(*social_date_filters))
-    
-    new_vs_returning = await calculate_new_vs_returning(
-        db, qr_base_query, social_base_query
-    )
-    
-    cluster_analytics = ClusterAnalytics(
-        cluster_id=cluster.id,
-        cluster_name=cluster.name,
-        region_id=cluster.region_id,
-        total_qr_scans=total_qr_scans,
-        total_social_clicks=total_social_clicks,
-        combined_total=total_qr_scans + total_social_clicks,
-        new_vs_returning=new_vs_returning,
-        branches=[]
-    )
-    
-    # Include branch details if requested
-    if include_branches:
-        branches_result = await db.execute(
-            select(Branch).where(
-                Branch.cluster_id == cluster.id,
-                Branch.is_active == True
-            ).order_by(Branch.name)
+    if qr_filters:
+        nvr_stmt_qr = nvr_stmt_qr.where(and_(*qr_filters))
+
+    nvr_stmt_social = (
+        select(
+            Branch.cluster_id,
+            func.sum(case((SocialClick.is_new_user == True, 1), else_=0)),
+            func.sum(case((SocialClick.is_new_user == False, 1), else_=0)),
         )
-        branches = branches_result.scalars().all()
-        
-        for branch in branches:
-            branch_analytics = await get_branch_analytics_internal(
-                db, branch, start_date, end_date
+        .join(Branch, Branch.id == SocialClick.branch_id)
+        .where(Branch.cluster_id.in_(cluster_map.keys()))
+        .group_by(Branch.cluster_id)
+    )
+    if social_filters:
+        nvr_stmt_social = nvr_stmt_social.where(and_(*social_filters))
+
+    nvr_map = {}
+    for cid, new_u, ret_u in (await db.execute(nvr_stmt_qr)).all():
+        nvr_map[cid] = [new_u or 0, ret_u or 0]
+
+    for cid, new_u, ret_u in (await db.execute(nvr_stmt_social)).all():
+        base = nvr_map.setdefault(cid, [0, 0])
+        base[0] += new_u or 0
+        base[1] += ret_u or 0
+
+    result = {}
+    for cid, cluster in cluster_map.items():
+        total_qr = qr_counts.get(cid, 0)
+        total_social = social_counts.get(cid, 0)
+        new_u, ret_u = nvr_map.get(cid, (0, 0))
+        total = new_u + ret_u
+
+        result.setdefault(cluster.region_id, []).append(
+            ClusterAnalytics(
+                cluster_id=cid,
+                cluster_name=cluster.name,
+                region_id=cluster.region_id,
+                total_qr_scans=total_qr,
+                total_social_clicks=total_social,
+                combined_total=total_qr + total_social,
+                new_vs_returning=NewVsReturning(
+                    new_users=new_u,
+                    returning_users=ret_u,
+                    new_percentage=round((new_u/total*100),2) if total else 0.0,
+                    returning_percentage=round((ret_u/total*100),2) if total else 0.0
+                ),
+                branches=[]
             )
-            cluster_analytics.branches.append(branch_analytics)
-    
-    return cluster_analytics
+        )
+
+    return result
 
 @router.get("/clusters/{cluster_id}", response_model=ClusterAnalytics)
 async def get_cluster_analytics(
@@ -425,7 +433,7 @@ async def get_cluster_analytics(
     if not cluster:
         raise HTTPException(status_code=404, detail="Cluster not found")
     
-    return await get_cluster_analytics_internal(
+    return await get_cluster_analytics_bulk(
         db, cluster, start_date, end_date, include_branches
     )
 
@@ -433,76 +441,121 @@ async def get_cluster_analytics(
 # ============================================
 # BRANCH ANALYTICS
 # ============================================
-async def get_branch_analytics_internal(
+async def get_branch_analytics_bulk(
     db: AsyncSession,
-    branch: Branch,
+    cluster_ids: List[int],
     start_date: Optional[str] = None,
     end_date: Optional[str] = None
-) -> BranchAnalytics:
-    """Internal function to get branch analytics"""
-    
-    # Build date filters for both QR and Social
-    qr_date_filters = []
-    social_date_filters = []
-    
+) -> dict[int, List[BranchAnalytics]]:
+
+    qr_filters, social_filters = [], []
+
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date)
-            qr_date_filters.append(QRScan.scanned_at >= start_dt)
-            social_date_filters.append(SocialClick.clicked_at >= start_dt)
+            dt = datetime.fromisoformat(start_date)
+            qr_filters.append(QRScan.scanned_at >= dt)
+            social_filters.append(SocialClick.clicked_at >= dt)
         except ValueError:
             pass
-    
+
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
-            qr_date_filters.append(QRScan.scanned_at <= end_dt)
-            social_date_filters.append(SocialClick.clicked_at <= end_dt)
+            dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
+            qr_filters.append(QRScan.scanned_at <= dt)
+            social_filters.append(SocialClick.clicked_at <= dt)
         except ValueError:
             pass
-    
-    # QR Scans
-    qr_query = select(func.count(QRScan.id)).join(QRCode).where(
-        QRCode.branch_id == branch.id
+
+    branches = (await db.execute(
+        select(Branch).where(Branch.cluster_id.in_(cluster_ids), Branch.is_active == True)
+    )).scalars().all()
+
+    branch_map = {b.id: b for b in branches}
+    if not branch_map:
+        return {}
+
+    # QR
+    qr_stmt = (
+        select(QRCode.branch_id, func.count(QRScan.id))
+        .join(QRCode, QRCode.id == QRScan.qr_code_id)
+        .where(QRCode.branch_id.in_(branch_map.keys()))
+        .group_by(QRCode.branch_id)
     )
-    if qr_date_filters:
-        qr_query = qr_query.where(and_(*qr_date_filters))
-    
-    total_qr_scans = (await db.execute(qr_query)).scalar() or 0
-    
-    # Social Clicks
-    social_query = select(func.count(SocialClick.id)).where(
-        SocialClick.branch_id == branch.id
+    if qr_filters:
+        qr_stmt = qr_stmt.where(and_(*qr_filters))
+    qr_counts = dict((await db.execute(qr_stmt)).all())
+
+    # Social
+    social_stmt = (
+        select(SocialClick.branch_id, func.count(SocialClick.id))
+        .where(SocialClick.branch_id.in_(branch_map.keys()))
+        .group_by(SocialClick.branch_id)
     )
-    if social_date_filters:
-        social_query = social_query.where(and_(*social_date_filters))
-    
-    total_social_clicks = (await db.execute(social_query)).scalar() or 0
-    
-    # New vs Returning - BUILD QUERY OBJECTS, NOT FILTER LISTS
-    qr_base_query = select(QRScan).join(QRCode).where(QRCode.branch_id == branch.id)
-    social_base_query = select(SocialClick).where(SocialClick.branch_id == branch.id)
-    
-    # Add date filters if they exist
-    if qr_date_filters:
-        qr_base_query = qr_base_query.where(and_(*qr_date_filters))
-    
-    if social_date_filters:
-        social_base_query = social_base_query.where(and_(*social_date_filters))
-    
-    new_vs_returning = await calculate_new_vs_returning(
-        db, qr_base_query, social_base_query
+    if social_filters:
+        social_stmt = social_stmt.where(and_(*social_filters))
+    social_counts = dict((await db.execute(social_stmt)).all())
+
+    # NVR
+    nvr_qr = (
+        select(
+            QRCode.branch_id,
+            func.sum(case((QRScan.is_new_user == True, 1), else_=0)),
+            func.sum(case((QRScan.is_new_user == False, 1), else_=0)),
+        )
+        .join(QRCode, QRCode.id == QRScan.qr_code_id)
+        .where(QRCode.branch_id.in_(branch_map.keys()))
+        .group_by(QRCode.branch_id)
     )
-    
-    return BranchAnalytics(
-        branch_id=branch.id,
-        branch_name=branch.name,
-        cluster_id=branch.cluster_id,
-        total_qr_scans=total_qr_scans,
-        total_social_clicks=total_social_clicks,
-        combined_total=total_qr_scans + total_social_clicks,
-        new_vs_returning=new_vs_returning
+    if qr_filters:
+        nvr_qr = nvr_qr.where(and_(*qr_filters))
+
+    nvr_social = (
+        select(
+            SocialClick.branch_id,
+            func.sum(case((SocialClick.is_new_user == True, 1), else_=0)),
+            func.sum(case((SocialClick.is_new_user == False, 1), else_=0)),
+        )
+        .where(SocialClick.branch_id.in_(branch_map.keys()))
+        .group_by(SocialClick.branch_id)
     )
+    if social_filters:
+        nvr_social = nvr_social.where(and_(*social_filters))
+
+    nvr_map = {}
+    for bid, new_u, ret_u in (await db.execute(nvr_qr)).all():
+        nvr_map[bid] = [new_u or 0, ret_u or 0]
+
+    for bid, new_u, ret_u in (await db.execute(nvr_social)).all():
+        base = nvr_map.setdefault(bid, [0, 0])
+        base[0] += new_u or 0
+        base[1] += ret_u or 0
+
+    result = {}
+    for bid, branch in branch_map.items():
+        total_qr = qr_counts.get(bid, 0)
+        total_social = social_counts.get(bid, 0)
+        new_u, ret_u = nvr_map.get(bid, (0, 0))
+        total = new_u + ret_u
+
+        result.setdefault(branch.cluster_id, []).append(
+            BranchAnalytics(
+                branch_id=bid,
+                branch_name=branch.name,
+                cluster_id=branch.cluster_id,
+                total_qr_scans=total_qr,
+                total_social_clicks=total_social,
+                combined_total=total_qr + total_social,
+                new_vs_returning=NewVsReturning(
+                    new_users=new_u,
+                    returning_users=ret_u,
+                    new_percentage=round((new_u/total*100),2) if total else 0.0,
+                    returning_percentage=round((ret_u/total*100),2) if total else 0.0
+                )
+            )
+        )
+
+    return result
+
 
 @router.get("/branches/{branch_id}", response_model=BranchAnalytics)
 async def get_branch_analytics(
@@ -523,7 +576,7 @@ async def get_branch_analytics(
     if not branch:
         raise HTTPException(status_code=404, detail="Branch not found")
     
-    return await get_branch_analytics_internal(db, branch, start_date, end_date)
+    return await get_branch_analytics_bulk(db, branch, start_date, end_date)
 
 
 @router.get("/branches/{branch_id}/social-breakdown")

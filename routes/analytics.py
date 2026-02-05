@@ -24,53 +24,83 @@ def require_super_admin(current_user: User):
         )
 
 
-async def calculate_new_vs_returning(
+async def calculate_new_vs_returning_bulk(
     db: AsyncSession,
-    qr_base_query=None,
-    social_base_query=None
-) -> NewVsReturning:
-    """Calculate new vs returning users for QR scans and social clicks"""
-    
-    # Default queries if none provided
-    if qr_base_query is None:
-        qr_base_query = select(QRScan)
-    
-    if social_base_query is None:
-        social_base_query = select(SocialClick)
-    
-    # QR Scans - apply the base query and count
-    qr_new_query = qr_base_query.where(QRScan.is_new_user == True)
-    qr_returning_query = qr_base_query.where(QRScan.is_new_user == False)
-    
-    # Convert to count queries
-    qr_new_count_query = select(func.count()).select_from(qr_new_query.subquery())
-    qr_returning_count_query = select(func.count()).select_from(qr_returning_query.subquery())
-    
-    qr_new = (await db.execute(qr_new_count_query)).scalar() or 0
-    qr_returning = (await db.execute(qr_returning_count_query)).scalar() or 0
-    
-    # Social Clicks - apply the base query and count
-    social_new_query = social_base_query.where(SocialClick.is_new_user == True)
-    social_returning_query = social_base_query.where(SocialClick.is_new_user == False)
-    
-    # Convert to count queries
-    social_new_count_query = select(func.count()).select_from(social_new_query.subquery())
-    social_returning_count_query = select(func.count()).select_from(social_returning_query.subquery())
-    
-    social_new = (await db.execute(social_new_count_query)).scalar() or 0
-    social_returning = (await db.execute(social_returning_count_query)).scalar() or 0
-    
-    # Combine
-    total_new = qr_new + social_new
-    total_returning = qr_returning + social_returning
-    total = total_new + total_returning
-    
-    return NewVsReturning(
-        new_users=total_new,
-        returning_users=total_returning,
-        new_percentage=round((total_new / total * 100), 2) if total > 0 else 0.0,
-        returning_percentage=round((total_returning / total * 100), 2) if total > 0 else 0.0
+    region_ids: List[int],
+    qr_filters=None,
+    social_filters=None
+) -> dict[int, NewVsReturning]:
+    """
+    Bulk calculation of new vs returning users grouped by region.
+    Returns: { region_id: NewVsReturning }
+    """
+
+    qr_filters = qr_filters or []
+    social_filters = social_filters or []
+
+    # ---------------- QR DATA ----------------
+    qr_stmt = (
+        select(
+            Cluster.region_id,
+            func.sum(func.case((QRScan.is_new_user == True, 1), else_=0)).label("new_users"),
+            func.sum(func.case((QRScan.is_new_user == False, 1), else_=0)).label("returning_users"),
+        )
+        .join(QRCode, QRCode.id == QRScan.qr_code_id)
+        .join(Branch, Branch.id == QRCode.branch_id)
+        .join(Cluster, Cluster.id == Branch.cluster_id)
+        .where(Cluster.region_id.in_(region_ids))
+        .group_by(Cluster.region_id)
     )
+
+    if qr_filters:
+        qr_stmt = qr_stmt.where(and_(*qr_filters))
+
+    qr_rows = (await db.execute(qr_stmt)).all()
+
+    # ---------------- SOCIAL DATA ----------------
+    social_stmt = (
+        select(
+            Cluster.region_id,
+            func.sum(func.case((SocialClick.is_new_user == True, 1), else_=0)).label("new_users"),
+            func.sum(func.case((SocialClick.is_new_user == False, 1), else_=0)).label("returning_users"),
+        )
+        .join(Branch, Branch.id == SocialClick.branch_id)
+        .join(Cluster, Cluster.id == Branch.cluster_id)
+        .where(Cluster.region_id.in_(region_ids))
+        .group_by(Cluster.region_id)
+    )
+
+    if social_filters:
+        social_stmt = social_stmt.where(and_(*social_filters))
+
+    social_rows = (await db.execute(social_stmt)).all()
+
+    # ---------------- MERGE RESULTS ----------------
+    from collections import defaultdict
+    result_map = defaultdict(lambda: {"new": 0, "ret": 0})
+
+    for rid, new_u, ret_u in qr_rows:
+        result_map[rid]["new"] += new_u or 0
+        result_map[rid]["ret"] += ret_u or 0
+
+    for rid, new_u, ret_u in social_rows:
+        result_map[rid]["new"] += new_u or 0
+        result_map[rid]["ret"] += ret_u or 0
+
+    final = {}
+    for rid in region_ids:
+        new_users = result_map[rid]["new"]
+        returning_users = result_map[rid]["ret"]
+        total = new_users + returning_users
+
+        final[rid] = NewVsReturning(
+            new_users=new_users,
+            returning_users=returning_users,
+            new_percentage=round((new_users / total * 100), 2) if total else 0.0,
+            returning_percentage=round((returning_users / total * 100), 2) if total else 0.0
+        )
+
+    return final
 
 # ============================================
 # REGION ANALYTICS
@@ -191,7 +221,7 @@ async def get_region_analytics(
 
         # Only load cluster details if requested (kept separate to avoid slowing main endpoint)
         if include_details:
-            region_analytics.clusters = await get_cluster_breakdown_bulk(
+            region_analytics.clusters = await get_cluster_analytics_internal(
                 db=db,
                 region_id=rid,
                 start_date=start_date,

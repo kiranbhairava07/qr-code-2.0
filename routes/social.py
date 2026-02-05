@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from pathlib import Path
 from typing import Optional
 import logging
-import hashlib
+import uuid
 
 from database import get_db
 from models import SocialClick, QRCode, QRScan
@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 TEMPLATES_DIR = Path("templates/social")
 
 
-def generate_session_id(ip: str, user_agent: str) -> str:
-    """Generate consistent session ID from IP and user agent - BACKEND FALLBACK"""
-    data = f"{ip}:{user_agent}"
-    return hashlib.sha256(data.encode()).hexdigest()[:32]
+
+# def generate_session_id(ip: str, user_agent: str) -> str:
+#     """Generate consistent session ID from IP and user agent - BACKEND FALLBACK"""
+#     data = f"{ip}:{user_agent}"
+#     return hashlib.sha256(data.encode()).hexdigest()[:32]
 
 
 @router.get("/social-links", response_class=HTMLResponse)
@@ -60,72 +61,45 @@ async def social_links_page(
             status_code=500
         )
 
-
-
 async def is_new_user(db: AsyncSession, session_id: str) -> bool:
-    """
-    Check if this is a new user based on session_id.
-    Checks BOTH QR scans AND social clicks across all branches.
-    """
-    # Check QR scans
-    qr_result = await db.execute(
-        select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
-    )
-    qr_exists = qr_result.scalar_one_or_none()
-    
-    if qr_exists:
-        return False  # Found in QR scans - returning user
-    
-    # Check social clicks
-    social_result = await db.execute(
-        select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
-    )
-    social_exists = social_result.scalar_one_or_none()
-    
-    return social_exists is None  # New only if not found in both tables
+    qr_result = await db.execute(select(QRScan.id).where(QRScan.session_id == session_id).limit(1))
+    if qr_result.scalar_one_or_none():
+        return False
 
+    social_result = await db.execute(select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1))
+    return social_result.scalar_one_or_none() is None
 
 @router.post("/api/social-click")
-async def log_social_click(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """Track clicks on social media platform buttons with new vs returning tracking"""
+async def log_social_click(request: Request, db: AsyncSession = Depends(get_db)):
     try:
         data = await request.json()
+
         platform = data.get("platform", "unknown")
         branch_code = data.get("branch_code")
         frontend_session = data.get("session_id", "")
         user_agent = request.headers.get("user-agent", "")
-        
-        # Get IP address
         ip_address = request.client.host if request.client else None
-        
-        # SIMPLE ELEGANT FIX: Use backend IP+UA hash if frontend session fails
-        if frontend_session and len(frontend_session) > 10:
+
+        # ✅ Use cookie session FIRST
+        cookie_session = request.cookies.get("qr_session")
+
+        if cookie_session:
+            session_id = cookie_session
+        elif frontend_session and len(frontend_session) > 10:
             session_id = frontend_session
         else:
-            session_id = generate_session_id(ip_address or "unknown", user_agent)
-            logger.info(f"Using backend session ID for social click (localStorage failed): {session_id[:16]}...")
-        
-        # Get branch_id from QR code
+            session_id = str(uuid.uuid4())  # rare fallback
+
+        # Resolve branch
         branch_id = None
         if branch_code:
-            result = await db.execute(
-                select(QRCode.branch_id).where(QRCode.code == branch_code)
-            )
+            result = await db.execute(select(QRCode.branch_id).where(QRCode.code == branch_code))
             branch_id = result.scalar_one_or_none()
-        
-        # Parse device info
+
         device_info = parse_device_info(user_agent)
-        
-        # Get location from IP
         location_data = await get_location_from_ip(ip_address)
-        
-        # Check if new user
         is_new = await is_new_user(db, session_id)
-        
-        # Create click record
+
         click = SocialClick(
             platform=platform,
             branch_id=branch_id,
@@ -139,21 +113,15 @@ async def log_social_click(
             is_new_user=is_new,
             user_agent=user_agent
         )
-        
+
         db.add(click)
         await db.commit()
-        
-        user_type = "New" if is_new else "Returning"
-        logger.info(f"Social click logged: {platform} from branch_id={branch_id}, {user_type} user, Session: {session_id[:16]}...")
-        
+
         return {"status": "success", "is_new_user": is_new}
-        
+
     except Exception as e:
-        logger.error(f"Error logging social click: {str(e)}", exc_info=True)
-        return {"status": "error", "message": str(e)}
-
-
-
+        logger.error(f"Error logging social click: {e}", exc_info=True)
+        return {"status": "error"}
 @router.get("/api/social-analytics")
 async def get_social_analytics(
     start_date: Optional[str] = None,
@@ -161,124 +129,61 @@ async def get_social_analytics(
     branch_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get analytics for social media platform clicks.
-    Can filter by branch_id, start_date, and end_date.
-    """
     try:
         from datetime import datetime, timedelta
-        
-        # Build filters
+
         filters = []
-        
+
         if branch_id:
             filters.append(SocialClick.branch_id == branch_id)
-        
+
         if start_date:
-            try:
-                start_dt = datetime.fromisoformat(start_date)
-                filters.append(SocialClick.clicked_at >= start_dt)
-            except ValueError:
-                logger.warning(f"Invalid start_date format: {start_date}")
-        
+            filters.append(SocialClick.clicked_at >= datetime.fromisoformat(start_date))
+
         if end_date:
-            try:
-                end_dt = datetime.fromisoformat(end_date)
-                end_dt = end_dt + timedelta(days=1) - timedelta(seconds=1)
-                filters.append(SocialClick.clicked_at <= end_dt)
-            except ValueError:
-                logger.warning(f"Invalid end_date format: {end_date}")
-        
-        # Get total clicks per platform with filters
+            end_dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
+            filters.append(SocialClick.clicked_at <= end_dt)
+
         query = select(
             SocialClick.platform,
             func.count(SocialClick.id).label('count')
         ).group_by(SocialClick.platform).order_by(func.count(SocialClick.id).desc())
-        
+
         if filters:
-            from sqlalchemy import and_
             query = query.where(and_(*filters))
-        
+
         result = await db.execute(query)
-        
-        platform_stats = [
-            {"platform": row.platform, "count": row.count}
-            for row in result.all()
-        ]
-        
-        # Get total clicks with filters
+        platform_stats = [{"platform": row.platform, "count": row.count} for row in result]
+
         total_query = select(func.count(SocialClick.id))
         if filters:
             total_query = total_query.where(and_(*filters))
-        
-        total_result = await db.execute(total_query)
-        total_clicks = total_result.scalar()
-        
-        return {
-            "total_clicks": total_clicks or 0,
-            "platforms": platform_stats,
-            "branch_id": branch_id
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting social analytics: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to get analytics"}
-        )
 
+        total_clicks = (await db.execute(total_query)).scalar() or 0
+
+        return {"total_clicks": total_clicks, "platforms": platform_stats, "branch_id": branch_id}
+
+    except Exception as e:
+        logger.error(f"Analytics error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "Failed to get analytics"})
 
 @router.get("/social-links/styles.css")
 async def social_links_css():
-    """Serve the CSS file for social links page"""
-    try:
-        css_path = TEMPLATES_DIR / "styles.css"
-        
-        if not css_path.exists():
-            return HTMLResponse(content="", status_code=404)
-        
-        with open(css_path, 'r', encoding='utf-8') as f:
-            css_content = f.read()
-        
-        return HTMLResponse(
-            content=css_content,
-            media_type="text/css"
-        )
-    except Exception as e:
-        logger.error(f"Error loading CSS: {str(e)}", exc_info=True)
-        return HTMLResponse(content="", status_code=500)
+    css_path = TEMPLATES_DIR / "styles.css"
+    if not css_path.exists():
+        return HTMLResponse("", status_code=404)
+
+    return HTMLResponse(css_path.read_text(), media_type="text/css")
 
 
 @router.get("/social-links/{image_name}")
 async def social_links_images(image_name: str):
-    """Serve images for social links page"""
-    from fastapi.responses import FileResponse
-    
-    try:
-        allowed_images = [
-            'gk.png', 'facebook.png', 'instagram.png', 
-            'youtube.png', 'threads.png', 'twitter.png', 'whatsapp.png'
-        ]
-        
-        if image_name not in allowed_images:
-            return HTMLResponse(content="Not found", status_code=404)
-        
-        image_path = TEMPLATES_DIR / image_name
-        
-        if not image_path.exists():
-            return HTMLResponse(content="Image not found", status_code=404)
-        
-        if image_name.endswith('.png'):
-            media_type = "image/png"
-        elif image_name.endswith('.jpg') or image_name.endswith('.jpeg'):
-            media_type = "image/jpeg"
-        else:
-            media_type = "application/octet-stream"
-        
-        return FileResponse(
-            path=image_path,
-            media_type=media_type
-        )
-    except Exception as e:
-        logger.error(f"Error loading image: {str(e)}", exc_info=True)
-        return HTMLResponse(content="Error", status_code=500)
+    allowed = ['gk.png','facebook.png','instagram.png','youtube.png','threads.png','twitter.png','whatsapp.png']
+    if image_name not in allowed:
+        return HTMLResponse("Not found", status_code=404)
+
+    path = TEMPLATES_DIR / image_name
+    if not path.exists():
+        return HTMLResponse("Not found", status_code=404)
+
+    return FileResponse(path)

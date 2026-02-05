@@ -72,37 +72,46 @@ function getSessionId() {{
     return match ? match[1] : null;
 }}
 
-async function logScan(lat, lon, accuracy) {{
-    try {{
-        await fetch(`${{API}}/api/scan-log`, {{
+function sendLog(lat, lon, accuracy) {{
+    const payload = JSON.stringify({{
+        qr_code_id: QR_ID,
+        latitude: lat,
+        longitude: lon,
+        accuracy: accuracy,
+        user_agent: navigator.userAgent,
+        session_id: getSessionId()
+    }});
+
+    // Best method for background logging
+    if (navigator.sendBeacon) {{
+        navigator.sendBeacon(`${{API}}/api/scan-log`, payload);
+    }} else {{
+        fetch(`${{API}}/api/scan-log`, {{
             method: "POST",
             credentials: "include",
             headers: {{ "Content-Type": "application/json" }},
-            body: JSON.stringify({{
-                qr_code_id: QR_ID,
-                latitude: lat,
-                longitude: lon,
-                accuracy: accuracy,
-                user_agent: navigator.userAgent,
-                session_id: getSessionId()
-            }})
+            body: payload
         }});
-    }} catch(e) {{}}
-    window.location.href = TARGET_URL;
+    }}
 }}
 
+// Try GPS but DO NOT WAIT
 if (navigator.geolocation) {{
     navigator.geolocation.getCurrentPosition(
-        pos => logScan(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
-        () => logScan(null, null, null),
-        {{ timeout: 4000 }}
+        pos => sendLog(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+        () => sendLog(null, null, null),
+        {{ timeout: 2000 }}
     );
 }} else {{
-    logScan(null, null, null);
+    sendLog(null, null, null);
 }}
+
+// nstant redirect — no waiting
+window.location.replace(TARGET_URL);
 </script>
 </body>
 </html>"""
+
 
         response = HTMLResponse(content=html_content)
 

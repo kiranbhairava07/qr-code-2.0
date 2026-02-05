@@ -87,129 +87,116 @@ async def get_region_analytics(
     require_super_admin(current_user)
 
     # ---------------- DATE FILTERS ----------------
-    qr_date_filters = []
-    social_date_filters = []
+    qr_filters = []
+    social_filters = []
 
     try:
         if start_date:
             start_dt = datetime.fromisoformat(start_date)
-            qr_date_filters.append(QRScan.scanned_at >= start_dt)
-            social_date_filters.append(SocialClick.clicked_at >= start_dt)
+            qr_filters.append(QRScan.scanned_at >= start_dt)
+            social_filters.append(SocialClick.clicked_at >= start_dt)
 
         if end_date:
             end_dt = datetime.fromisoformat(end_date) + timedelta(days=1) - timedelta(seconds=1)
-            qr_date_filters.append(QRScan.scanned_at <= end_dt)
-            social_date_filters.append(SocialClick.clicked_at <= end_dt)
+            qr_filters.append(QRScan.scanned_at <= end_dt)
+            social_filters.append(SocialClick.clicked_at <= end_dt)
     except ValueError:
         pass
 
     # ---------------- FETCH REGIONS ----------------
-    region_query = select(Region).where(Region.is_active == True)
-
+    region_stmt = select(Region.id, Region.name).where(Region.is_active == True)
     if region_id:
-        region_query = region_query.where(Region.id == region_id)
+        region_stmt = region_stmt.where(Region.id == region_id)
 
-    region_query = region_query.order_by(Region.name)
+    region_rows = (await db.execute(region_stmt.order_by(Region.name))).all()
+    region_map = {r.id: r.name for r in region_rows}
 
-    regions_result = await db.execute(region_query)
-    regions = regions_result.scalars().all()
+    if not region_map:
+        return []
 
+    # ---------------- BRANCHES GROUPED BY REGION ----------------
+    branch_stmt = (
+        select(Cluster.region_id, Branch.id)
+        .join(Branch, Branch.cluster_id == Cluster.id)
+        .where(Branch.is_active == True, Cluster.region_id.in_(region_map.keys()))
+    )
+
+    branch_rows = (await db.execute(branch_stmt)).all()
+
+    branches_by_region = {}
+    for rid, bid in branch_rows:
+        branches_by_region.setdefault(rid, []).append(bid)
+
+    # ---------------- QR SCANS GROUPED BY REGION ----------------
+    qr_stmt = (
+        select(Cluster.region_id, func.count(QRScan.id))
+        .join(Branch, Branch.cluster_id == Cluster.id)
+        .join(QRCode, QRCode.branch_id == Branch.id)
+        .join(QRScan, QRScan.qr_code_id == QRCode.id)
+        .where(Cluster.region_id.in_(region_map.keys()))
+        .group_by(Cluster.region_id)
+    )
+
+    if qr_filters:
+        qr_stmt = qr_stmt.where(and_(*qr_filters))
+
+    qr_counts = dict((await db.execute(qr_stmt)).all())
+
+    # ---------------- SOCIAL CLICKS GROUPED BY REGION ----------------
+    social_stmt = (
+        select(Cluster.region_id, func.count(SocialClick.id))
+        .join(Branch, Branch.cluster_id == Cluster.id)
+        .join(SocialClick, SocialClick.branch_id == Branch.id)
+        .where(Cluster.region_id.in_(region_map.keys()))
+        .group_by(Cluster.region_id)
+    )
+
+    if social_filters:
+        social_stmt = social_stmt.where(and_(*social_filters))
+
+    social_counts = dict((await db.execute(social_stmt)).all())
+
+    # ---------------- BULK NEW VS RETURNING ----------------
+    new_returning_map = await calculate_new_vs_returning_bulk(
+        db=db,
+        region_ids=list(region_map.keys()),
+        qr_filters=qr_filters,
+        social_filters=social_filters
+    )
+
+    # ---------------- BUILD RESPONSE ----------------
     analytics = []
 
-    for region in regions:
-        # ---------------- BRANCH IDS ----------------
-        branch_ids_query = (
-            select(Branch.id)
-            .join(Cluster)
-            .where(Cluster.region_id == region.id, Branch.is_active == True)
-        )
-        branch_ids_result = await db.execute(branch_ids_query)
-        branch_ids = [row[0] for row in branch_ids_result.all()]
+    for rid, rname in region_map.items():
+        total_qr = qr_counts.get(rid, 0)
+        total_social = social_counts.get(rid, 0)
 
-        if not branch_ids:
-            # If no branches, return zero analytics
-            region_analytics = RegionAnalytics(
-                region_id=region.id,
-                region_name=region.name,
-                total_qr_scans=0,
-                total_social_clicks=0,
-                detailed_platform_breakdown=[],
-                combined_total=0,
-                new_vs_returning=NewVsReturning(
+        region_analytics = RegionAnalytics(
+            region_id=rid,
+            region_name=rname,
+            total_qr_scans=total_qr,
+            total_social_clicks=total_social,
+            combined_total=total_qr + total_social,
+            new_vs_returning=new_returning_map.get(
+                rid,
+                NewVsReturning(
                     new_users=0,
                     returning_users=0,
                     new_percentage=0.0,
                     returning_percentage=0.0
-                ),
-                clusters=[]
-            )
-            analytics.append(region_analytics)
-            continue
-
-        # ---------------- QR SCANS ----------------
-        qr_query = (
-            select(func.count(QRScan.id))
-            .join(QRCode)
-            .where(QRCode.branch_id.in_(branch_ids))
-        )
-        if qr_date_filters:
-            qr_query = qr_query.where(and_(*qr_date_filters))
-
-        total_qr_scans = (await db.execute(qr_query)).scalar() or 0
-
-        # ---------------- SOCIAL CLICKS ----------------
-        social_query = select(func.count(SocialClick.id)).where(
-            SocialClick.branch_id.in_(branch_ids)
-        )
-        if social_date_filters:
-            social_query = social_query.where(and_(*social_date_filters))
-
-        total_social_clicks = (await db.execute(social_query)).scalar() or 0
-
-        # ---------------- NEW VS RETURNING ----------------
-        # IMPORTANT: Build queries with proper filtering
-        qr_base_query = select(QRScan).join(QRCode).where(QRCode.branch_id.in_(branch_ids))
-        social_base_query = select(SocialClick).where(SocialClick.branch_id.in_(branch_ids))
-        
-        # Add date filters if they exist
-        if qr_date_filters:
-            qr_base_query = qr_base_query.where(and_(*qr_date_filters))
-        
-        if social_date_filters:
-            social_base_query = social_base_query.where(and_(*social_date_filters))
-
-        new_vs_returning = await calculate_new_vs_returning(
-            db, qr_base_query, social_base_query
-        )
-
-        region_analytics = RegionAnalytics(
-            region_id=region.id,
-            region_name=region.name,
-            total_qr_scans=total_qr_scans,
-            total_social_clicks=total_social_clicks,
-            combined_total=total_qr_scans + total_social_clicks,
-            new_vs_returning=new_vs_returning,
+                )
+            ),
             clusters=[]
         )
 
-        # ---------------- CLUSTER + BRANCH BREAKDOWN ----------------
+        # Only load cluster details if requested (kept separate to avoid slowing main endpoint)
         if include_details:
-            clusters_result = await db.execute(
-                select(Cluster)
-                .where(Cluster.region_id == region.id, Cluster.is_active == True)
-                .order_by(Cluster.name)
+            region_analytics.clusters = await get_cluster_breakdown_bulk(
+                db=db,
+                region_id=rid,
+                start_date=start_date,
+                end_date=end_date
             )
-            clusters = clusters_result.scalars().all()
-
-            for cluster in clusters:
-                cluster_analytics = await get_cluster_analytics_internal(
-                    db=db,
-                    cluster=cluster,
-                    start_date=start_date,
-                    end_date=end_date,
-                    include_branches=True
-                )
-                region_analytics.clusters.append(cluster_analytics)
 
         analytics.append(region_analytics)
 

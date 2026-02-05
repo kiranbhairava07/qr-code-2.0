@@ -23,6 +23,48 @@ def require_super_admin(current_user: User):
             detail="Only super admin can view analytics"
         )
 
+async def calculate_new_vs_returning(
+    db: AsyncSession,
+    qr_base_query=None,
+    social_base_query=None
+) -> NewVsReturning:
+
+    if qr_base_query is None:
+        qr_base_query = select(QRScan)
+
+    if social_base_query is None:
+        social_base_query = select(SocialClick)
+
+    qr_new = select(func.count()).select_from(
+        qr_base_query.where(QRScan.is_new_user == True).subquery()
+    )
+    qr_ret = select(func.count()).select_from(
+        qr_base_query.where(QRScan.is_new_user == False).subquery()
+    )
+
+    social_new = select(func.count()).select_from(
+        social_base_query.where(SocialClick.is_new_user == True).subquery()
+    )
+    social_ret = select(func.count()).select_from(
+        social_base_query.where(SocialClick.is_new_user == False).subquery()
+    )
+
+    qr_new = (await db.execute(qr_new)).scalar() or 0
+    qr_ret = (await db.execute(qr_ret)).scalar() or 0
+    social_new = (await db.execute(social_new)).scalar() or 0
+    social_ret = (await db.execute(social_ret)).scalar() or 0
+
+    total_new = qr_new + social_new
+    total_ret = qr_ret + social_ret
+    total = total_new + total_ret
+
+    return NewVsReturning(
+        new_users=total_new,
+        returning_users=total_ret,
+        new_percentage=round((total_new / total * 100), 2) if total else 0.0,
+        returning_percentage=round((total_ret / total * 100), 2) if total else 0.0
+    )
+
 
 async def calculate_new_vs_returning_bulk(
     db: AsyncSession,
@@ -221,12 +263,22 @@ async def get_region_analytics(
 
         # Only load cluster details if requested (kept separate to avoid slowing main endpoint)
         if include_details:
-            region_analytics.clusters = await get_cluster_analytics_internal(
-                db=db,
-                region_id=rid,
-                start_date=start_date,
-                end_date=end_date
+            clusters_result = await db.execute(
+                select(Cluster)
+                .where(Cluster.region_id == rid, Cluster.is_active == True)
+                .order_by(Cluster.name)
             )
+            clusters = clusters_result.scalars().all()
+
+            for cluster in clusters:
+                cluster_analytics = await get_cluster_analytics_internal(
+                    db=db,
+                    cluster=cluster,  # ✅ PASS CLUSTER OBJECT
+                    start_date=start_date,
+                    end_date=end_date,
+                    include_branches=True
+                )
+                region_analytics.clusters.append(cluster_analytics)
 
         analytics.append(region_analytics)
 

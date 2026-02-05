@@ -598,9 +598,15 @@ td{
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
+<div class="loading-overlay show" id="loadingOverlay">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <div class="spinner"></div>
+        <div style="font-size:13px;color:var(--muted);letter-spacing:0.5px;">
+            Loading analytics…
+        </div>
+    </div>
 </div>
+
 
 <div class="container">
     <!-- Header (ALWAYS shows the same filters) -->
@@ -666,20 +672,28 @@ async function api(endpoint) {
 }
 
 async function init() {
-    const user = await api('/auth/me');
-    if (!user.is_super_admin) {
-        alert('Access denied - Super Admin only');
-        window.location.href = '/dashboard';
-        return;
+    try {
+        const user = await api('/auth/me');
+        if (!user.is_super_admin) {
+            alert('Access denied - Super Admin only');
+            window.location.href = '/dashboard';
+            return;
+        }
+        
+        regions = await api('/api/regions');
+        clusters = await api('/api/clusters');
+        branches = await api('/api/branches');
+        
+        populateRegionFilter();
+        await loadHierarchyAnalytics();
+
+    } catch (e) {
+        console.error('Init failed:', e);
+    } finally {
+        hideLoading(); // Hide loader after first render
     }
-    
-    regions = await api('/api/regions');
-    clusters = await api('/api/clusters');
-    branches = await api('/api/branches');
-    
-    populateRegionFilter();
-    await loadHierarchyAnalytics();
 }
+
 
 function populateRegionFilter() {
     const regionFilter = document.getElementById('regionFilter');

@@ -1310,23 +1310,26 @@ async function confirmDelete() {
 
 async function downloadQR() {
     if (!currentQR) return;
-    
+
     try {
         const response = await fetch(`${API}/api/qr/${currentQR.id}/image?download=true`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `qr-${currentQR.code}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+
+        if (!response.ok) throw new Error("Download failed");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        // Let backend filename be used via Content-Disposition
+        const a = document.createElement('a');
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
     } catch (error) {
         console.error('Error downloading QR:', error);
         alert('Failed to download QR code');

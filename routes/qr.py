@@ -294,21 +294,30 @@ async def get_qr_image(
 ):
     """
     Generate QR code image (view or download).
+    Downloaded file will use Branch name as filename.
     """
     try:
+        # Fetch QR code + Branch name
         result = await db.execute(
-            select(QRCode).where(
-                and_(QRCode.id == qr_id, QRCode.created_by == current_user.id)
-            )
+            select(QRCode, Branch.name)
+            .join(Branch, Branch.id == QRCode.branch_id)
+            .where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
         )
-        qr_code = result.scalar_one_or_none()
 
-        if not qr_code:
+        row = result.one_or_none()
+
+        if not row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="QR code not found"
             )
 
+        qr_code, branch_name = row
+
+        # Build redirect URL
+        redirect_url = f"{settings.BASE_URL}/r/{qr_code.code}"
+
+        # Generate QR image
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -316,7 +325,6 @@ async def get_qr_image(
             border=4,
         )
 
-        redirect_url = f"{settings.BASE_URL}/r/{qr_code.code}"
         qr.add_data(redirect_url)
         qr.make(fit=True)
 
@@ -327,9 +335,20 @@ async def get_qr_image(
         buffer.seek(0)
 
         headers = {}
+
+        # If download requested, use branch name as filename
         if download:
+            safe_branch_name = "".join(
+                c for c in branch_name if c.isalnum() or c in (" ", "-", "_")
+            ).rstrip()
+
+            safe_branch_name = safe_branch_name.replace(" ", "_")
+
+            if not safe_branch_name:
+                safe_branch_name = f"qr_{qr_code.id}"
+
             headers["Content-Disposition"] = (
-                f"attachment; filename=qr-{qr_code.code}.png"
+                f"attachment; filename={safe_branch_name}.png"
             )
 
         return Response(
@@ -337,7 +356,7 @@ async def get_qr_image(
             media_type="image/png",
             headers=headers
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

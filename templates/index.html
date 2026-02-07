@@ -361,10 +361,10 @@
                 }
 
                 localStorage.setItem('token', data.access_token);
-                showSuccess('Login successful! Redirecting to dashboard...');
+                showSuccess('Login successful! Redirecting to Home...');
                 
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
+                    window.location.href = '/home';
                 }, 1000);
 
             } catch (error) {
@@ -380,7 +380,7 @@
 
         // Check if already logged in
         if (localStorage.getItem('token')) {
-            window.location.href = '/dashboard';
+            window.location.href = '/home';
         }
     </script>
 </body>

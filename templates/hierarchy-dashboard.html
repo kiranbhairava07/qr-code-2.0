@@ -628,7 +628,7 @@ td{
             <button class="btn btn-primary export-btn" onclick="exportPDF()" id="exportBtn" style="display:none;">
                 Export PDF
             </button>
-            <a href="/dashboard" class="btn">← Dashboard</a>
+            <a href="/home" class="btn">← Home</a>
         </div>
     </div>
 
@@ -676,7 +676,7 @@ async function init() {
         const user = await api('/auth/me');
         if (!user.is_super_admin) {
             alert('Access denied - Super Admin only');
-            window.location.href = '/dashboard';
+            window.location.href = '/home';
             return;
         }
         
@@ -964,7 +964,7 @@ function renderHierarchyContent(data, viewLevel) {
         rankingSubtitle = 'Ranked by combined traffic across all regions';
     }
     
-    items.sort((a, b) => b.combined - a.combined);
+    items.sort((a, b) => b.newUsers - a.newUsers);
     
     mainContent.innerHTML = `
         <div class="hierarchy-stats">

@@ -110,7 +110,7 @@ async def root():
     return FileResponse("templates/index.html")
 
 
-@app.get("/dashboard")
+@app.get("/home")
 async def dashboard():
     return FileResponse("templates/dashboard.html")
 

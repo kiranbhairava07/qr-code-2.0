@@ -22,10 +22,7 @@ async def social_links_page(
     request: Request,
     branch: Optional[str] = Query(None, description="Branch identifier from QR code")
 ):
-    """
-    Serve the social media links page.
-    Branch can be passed as query parameter: /social-links?branch=main-branch-2024
-    """
+    """Serve the social media links page"""
     try:
         html_path = TEMPLATES_DIR / "index.html"
         
@@ -54,16 +51,24 @@ async def social_links_page(
             status_code=500
         )
 
+
 async def is_new_user(db: AsyncSession, session_id: str) -> bool:
-    qr_result = await db.execute(select(QRScan.id).where(QRScan.session_id == session_id).limit(1))
+    """Check if this session has any previous scans or clicks"""
+    qr_result = await db.execute(
+        select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
+    )
     if qr_result.scalar_one_or_none():
         return False
 
-    social_result = await db.execute(select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1))
+    social_result = await db.execute(
+        select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
+    )
     return social_result.scalar_one_or_none() is None
+
 
 @router.post("/api/social-click")
 async def log_social_click(request: Request, db: AsyncSession = Depends(get_db)):
+    """Log social media platform click"""
     try:
         data = await request.json()
 
@@ -73,7 +78,7 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
         user_agent = request.headers.get("user-agent", "")
         ip_address = request.client.host if request.client else None
 
-        # ✅ FIXED: Consistent priority - cookie session first, then frontend
+        # ✅ Session priority: cookie > frontend > new
         cookie_session = request.cookies.get("qr_session")
         
         if cookie_session:
@@ -81,12 +86,10 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
         elif frontend_session:
             session_id = frontend_session
         else:
-            # This should rarely happen - means user went directly to social page
-            # without scanning QR first
             session_id = str(uuid.uuid4())
             logger.warning(f"No session found for social click {platform}, created new session")
 
-        # Resolve branch
+        # Resolve branch from QR code
         branch_id = None
         if branch_code:
             result = await db.execute(select(QRCode.branch_id).where(QRCode.code == branch_code))
@@ -113,12 +116,14 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
         db.add(click)
         await db.commit()
 
+        logger.info(f"✅ Social click recorded: {platform} (Session: {session_id[:8]}...)")
         return {"status": "success", "is_new_user": is_new}
 
     except Exception as e:
         logger.error(f"Error logging social click: {e}", exc_info=True)
         return {"status": "error"}
-        
+
+
 @router.get("/api/social-analytics")
 async def get_social_analytics(
     start_date: Optional[str] = None,
@@ -126,6 +131,7 @@ async def get_social_analytics(
     branch_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
+    """Get social media analytics"""
     try:
         from datetime import datetime, timedelta
 
@@ -163,6 +169,7 @@ async def get_social_analytics(
     except Exception as e:
         logger.error(f"Analytics error: {e}", exc_info=True)
         return JSONResponse(status_code=500, content={"error": "Failed to get analytics"})
+
 
 @router.get("/social-links/styles.css")
 async def social_links_css():

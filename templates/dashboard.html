@@ -1319,22 +1319,31 @@ async function downloadQR() {
         if (!response.ok) throw new Error("Download failed");
 
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
 
-        // Let backend filename be used via Content-Disposition
-        const a = document.createElement('a');
+        // ✅ Extract filename from backend header
+        const disposition = response.headers.get("Content-Disposition");
+        let filename = "qr-code.png";
+
+        if (disposition && disposition.includes("filename=")) {
+            filename = disposition.split("filename=")[1].replace(/"/g, "").trim();
+        }
+
+        // ✅ Force download instead of navigation
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
         a.href = url;
+        a.download = filename;   // use backend filename
         document.body.appendChild(a);
         a.click();
-
-        document.body.removeChild(a);
+        a.remove();
         window.URL.revokeObjectURL(url);
 
     } catch (error) {
-        console.error('Error downloading QR:', error);
-        alert('Failed to download QR code');
+        console.error("Error downloading QR:", error);
+        alert("Failed to download QR code");
     }
 }
+
 
 function closeModal(id) {
     document.getElementById(id).classList.remove('active');

@@ -334,22 +334,21 @@ async def get_qr_image(
         img.save(buffer, format="PNG")
         buffer.seek(0)
 
-        headers = {}
+        headers = {
+            # 🔥 CRITICAL: Allow frontend JS to read filename header
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
 
         # If download requested, use branch name as filename
         if download:
             safe_branch_name = "".join(
                 c for c in branch_name if c.isalnum() or c in (" ", "-", "_")
-            ).rstrip()
-
-            safe_branch_name = safe_branch_name.replace(" ", "_")
+            ).rstrip().replace(" ", "_")
 
             if not safe_branch_name:
                 safe_branch_name = f"qr_{qr_code.id}"
 
-            headers["Content-Disposition"] = (
-                f"attachment; filename={safe_branch_name}.png"
-            )
+            headers["Content-Disposition"] = f'attachment; filename="{safe_branch_name}.png"'
 
         return Response(
             content=buffer.getvalue(),
@@ -362,6 +361,7 @@ async def get_qr_image(
     except Exception as e:
         logger.error(f"Error generating QR image {qr_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate QR image")
+
 
 @router.get("/{qr_id}/analytics", response_model=QRAnalytics)
 async def get_qr_analytics(

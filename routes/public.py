@@ -55,6 +55,9 @@ async def redirect_qr(code: str, request: Request, db: AsyncSession = Depends(ge
         separator = "&" if "?" in target_url else "?"
         redirect_url = f"{target_url}{separator}branch={qr_code}"
 
+        # ✅ FIX: CREATE OR REUSE SESSION ID *BEFORE* RENDERING HTML
+        session_id = request.cookies.get("qr_session") or str(uuid.uuid4())
+
         html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -66,11 +69,7 @@ async def redirect_qr(code: str, request: Request, db: AsyncSession = Depends(ge
 const QR_ID = {qr_id};
 const TARGET_URL = "{redirect_url}";
 const API = "{settings.BASE_URL}";
-
-function getSessionId() {{
-    const match = document.cookie.match(/qr_session=([^;]+)/);
-    return match ? match[1] : null;
-}}
+const SESSION_ID = "{session_id}";  // ✅ INJECTED FROM BACKEND - NO RACE CONDITION
 
 function sendLog(lat, lon, accuracy) {{
     const payload = JSON.stringify({{
@@ -79,10 +78,9 @@ function sendLog(lat, lon, accuracy) {{
         longitude: lon,
         accuracy: accuracy,
         user_agent: navigator.userAgent,
-        session_id: getSessionId()
+        session_id: SESSION_ID  // ✅ USE INJECTED SESSION
     }});
 
-    // Best method for background logging
     if (navigator.sendBeacon) {{
         navigator.sendBeacon(`${{API}}/api/scan-log`, payload);
     }} else {{
@@ -106,28 +104,24 @@ if (navigator.geolocation) {{
     sendLog(null, null, null);
 }}
 
-// nstant redirect — no waiting
+// Instant redirect — no waiting
 window.location.replace(TARGET_URL);
 </script>
 </body>
 </html>"""
 
-
         response = HTMLResponse(content=html_content)
 
-        # ✅ Set persistent cookie session
-        session_cookie = request.cookies.get("qr_session") or str(uuid.uuid4())
-
+        # ✅ Set cookie with the SAME session_id we injected
         response.set_cookie(
             key="qr_session",
-            value=session_cookie,
+            value=session_id,
             max_age=60 * 60 * 24 * 365,
-            httponly=True,
+            httponly=False,  # ✅ Changed to False so JavaScript can read it
             samesite="None",
-            secure=True,      # required for HTTPS (Render uses HTTPS)
-            path="/"          # share across entire site
+            secure=True,
+            path="/"
         )
-
 
         return response
 
@@ -150,8 +144,15 @@ async def log_scan(request: Request, db: AsyncSession = Depends(get_db)):
         ip_address = request.client.host if request.client else None
         cookie_session = request.cookies.get("qr_session")
 
-        # ✅ Proper session priority
-        session_id = cookie_session or frontend_session or str(uuid.uuid4())
+        # ✅ FIXED: Strict priority - frontend session (injected) takes precedence
+        if frontend_session:
+            session_id = frontend_session
+        elif cookie_session:
+            session_id = cookie_session
+        else:
+            # This should NEVER happen now, but keep as safety net
+            session_id = str(uuid.uuid4())
+            logger.warning(f"No session found for QR scan {qr_code_id}, created emergency fallback")
 
         device_info = parse_device_info(user_agent)
         is_new = await is_new_user(db, session_id)

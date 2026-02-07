@@ -17,13 +17,6 @@ logger = logging.getLogger(__name__)
 TEMPLATES_DIR = Path("templates/social")
 
 
-
-# def generate_session_id(ip: str, user_agent: str) -> str:
-#     """Generate consistent session ID from IP and user agent - BACKEND FALLBACK"""
-#     data = f"{ip}:{user_agent}"
-#     return hashlib.sha256(data.encode()).hexdigest()[:32]
-
-
 @router.get("/social-links", response_class=HTMLResponse)
 async def social_links_page(
     request: Request,
@@ -80,15 +73,18 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
         user_agent = request.headers.get("user-agent", "")
         ip_address = request.client.host if request.client else None
 
-        # ✅ Use cookie session FIRST
+        # ✅ FIXED: Consistent priority - cookie session first, then frontend
         cookie_session = request.cookies.get("qr_session")
-
+        
         if cookie_session:
             session_id = cookie_session
-        elif frontend_session and len(frontend_session) > 10:
+        elif frontend_session:
             session_id = frontend_session
         else:
-            session_id = str(uuid.uuid4())  # rare fallback
+            # This should rarely happen - means user went directly to social page
+            # without scanning QR first
+            session_id = str(uuid.uuid4())
+            logger.warning(f"No session found for social click {platform}, created new session")
 
         # Resolve branch
         branch_id = None
@@ -122,6 +118,7 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
     except Exception as e:
         logger.error(f"Error logging social click: {e}", exc_info=True)
         return {"status": "error"}
+        
 @router.get("/api/social-analytics")
 async def get_social_analytics(
     start_date: Optional[str] = None,

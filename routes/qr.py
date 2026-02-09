@@ -38,7 +38,8 @@ async def list_qr_codes(
     OPTIMIZED: Single query with JOIN + GROUP BY.
     """
     try:
-        result = await db.execute(
+        # Build base query
+        query = (
             select(
                 QRCode,
                 func.coalesce(func.count(QRScan.id), 0).label("scan_count"),
@@ -46,12 +47,21 @@ async def list_qr_codes(
             )
             .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
-            .where(QRCode.created_by == current_user.id)
-            .group_by(QRCode.id, Branch.name)
+        )
+        
+        # âœ… Super admins see ALL QR codes, regular users see only their own
+        if not current_user.is_super_admin:
+            query = query.where(QRCode.created_by == current_user.id)
+        
+        # Apply ordering and pagination
+        query = (
+            query.group_by(QRCode.id, Branch.name)
             .order_by(QRCode.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
+        
+        result = await db.execute(query)
 
         rows = result.all()
         response_list = []
@@ -153,7 +163,7 @@ async def get_qr_code(
             )
             .join(Branch, Branch.id == QRCode.branch_id)
             .outerjoin(QRScan, QRCode.id == QRScan.qr_code_id)
-            .where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
+            .where(QRCode.id == qr_id)
             .group_by(QRCode.id, Branch.name)
         )
 
@@ -166,6 +176,13 @@ async def get_qr_code(
             )
 
         qr_code, scan_count = row
+        
+        # âœ… Permission check: super admins can view all, regular users only their own
+        if not current_user.is_super_admin and qr_code.created_by != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view QR codes you created"
+            )
 
         return {
             "id": qr_code.id,
@@ -201,7 +218,7 @@ async def update_qr_code(
     """
     try:
         result = await db.execute(
-            select(QRCode).where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
+            select(QRCode).where(QRCode.id == qr_id)
         )
         qr_code = result.scalar_one_or_none()
         
@@ -209,6 +226,13 @@ async def update_qr_code(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="QR code not found"
+            )
+        
+        # âœ… Permission check: super admins can edit all, regular users only their own
+        if not current_user.is_super_admin and qr_code.created_by != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only modify QR codes you created"
             )
         
         # Update fields
@@ -258,7 +282,7 @@ async def delete_qr_code(
     """
     try:
         result = await db.execute(
-            select(QRCode).where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
+            select(QRCode).where(QRCode.id == qr_id)
         )
         qr_code = result.scalar_one_or_none()
         
@@ -266,6 +290,13 @@ async def delete_qr_code(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="QR code not found"
+            )
+        
+        # âœ… Permission check: super admins can delete all, regular users only their own
+        if not current_user.is_super_admin and qr_code.created_by != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete QR codes you created"
             )
         
         await db.delete(qr_code)
@@ -301,7 +332,7 @@ async def get_qr_image(
         result = await db.execute(
             select(QRCode, Branch.name)
             .join(Branch, Branch.id == QRCode.branch_id)
-            .where(and_(QRCode.id == qr_id, QRCode.created_by == current_user.id))
+            .where(QRCode.id == qr_id)
         )
 
         row = result.one_or_none()
@@ -313,6 +344,13 @@ async def get_qr_image(
             )
 
         qr_code, branch_name = row
+        
+        # âœ… Permission check: super admins can download all, regular users only their own
+        if not current_user.is_super_admin and qr_code.created_by != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only download QR codes you created"
+            )
 
         # Build redirect URL
         redirect_url = f"{settings.BASE_URL}/r/{qr_code.code}"
@@ -393,7 +431,7 @@ async def get_qr_analytics(
         # Verify QR ownership
         result = await db.execute(
             select(QRCode).where(
-                and_(QRCode.id == qr_id, QRCode.created_by == current_user.id)
+                QRCode.id == qr_id
             )
         )
         qr_code = result.scalar_one_or_none()

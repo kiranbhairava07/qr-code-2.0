@@ -10,6 +10,7 @@ import uuid
 from database import get_db
 from models import SocialClick, QRCode, QRScan
 from utils import parse_device_info, get_location_from_ip
+from utils_session import is_new_user_atomic  # ✅ NEW: Atomic session deduplication
 
 router = APIRouter(tags=["Social Links"])
 logger = logging.getLogger(__name__)
@@ -52,18 +53,13 @@ async def social_links_page(
         )
 
 
-async def is_new_user(db: AsyncSession, session_id: str) -> bool:
-    """Check if this session has any previous scans or clicks"""
-    qr_result = await db.execute(
-        select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
-    )
-    if qr_result.scalar_one_or_none():
-        return False
 
-    social_result = await db.execute(
-        select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
-    )
-    return social_result.scalar_one_or_none() is None
+# ============================================
+# OLD is_new_user FUNCTION REMOVED  
+# ============================================
+# Now using is_new_user_atomic() from utils_session.py
+# ============================================
+
 
 
 @router.post("/api/social-click")
@@ -97,7 +93,14 @@ async def log_social_click(request: Request, db: AsyncSession = Depends(get_db))
 
         device_info = parse_device_info(user_agent)
         location_data = await get_location_from_ip(ip_address)
-        is_new = await is_new_user(db, session_id)
+        
+        # ✅ ATOMIC check: Use database constraint to prevent phantom users
+        is_new = await is_new_user_atomic(
+            db,
+            session_id,
+            action_type="social_click",
+            branch_id=branch_id
+        )
 
         click = SocialClick(
             platform=platform,

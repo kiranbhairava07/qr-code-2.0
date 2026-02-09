@@ -184,3 +184,37 @@ class SocialClick(Base):
 
     def __repr__(self):
         return f"<SocialClick(id={self.id}, platform='{self.platform}')>"
+    
+class SessionFirstSeen(Base):
+    """
+    Tracks the first time we see a session to prevent phantom users.
+    
+    The session_id is a PRIMARY KEY, which means the database GUARANTEES
+    that we can only insert one record per session_id. This eliminates 
+    race conditions entirely - if two requests try to mark the same session
+    as "new" simultaneously, one will succeed and one will fail gracefully.
+    """
+    __tablename__ = "session_first_seen"
+
+    session_id = Column(String(100), primary_key=True, index=True)
+    first_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    first_action_type = Column(String(20), nullable=False, index=True)  # 'qr_scan' or 'social_click'
+    
+    # Optional: Track origin
+    first_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
+    first_qr_code_id = Column(Integer, ForeignKey("qr_codes.id"), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    # Relationships (optional)
+    first_branch = relationship("Branch", foreign_keys=[first_branch_id])
+    first_qr_code = relationship("QRCode", foreign_keys=[first_qr_code_id])
+
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_session_created', 'created_at'),
+        Index('idx_session_action_created', 'first_action_type', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<SessionFirstSeen(session_id='{self.session_id}', first_action='{self.first_action_type}')>"

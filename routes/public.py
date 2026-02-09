@@ -8,24 +8,22 @@ import uuid
 from database import get_db
 from models import QRCode, QRScan, SocialClick
 from utils import parse_device_info, get_location_from_ip, get_location_from_gps
+from utils_session import is_new_user_atomic  # ✅ NEW: Atomic session deduplication
 from config import settings
 
 router = APIRouter(tags=["Public"])
 logger = logging.getLogger(__name__)
 
 
-async def is_new_user(db: AsyncSession, session_id: str) -> bool:
-    """Check if this session has any previous scans or clicks"""
-    qr_result = await db.execute(
-        select(QRScan.id).where(QRScan.session_id == session_id).limit(1)
-    )
-    if qr_result.scalar_one_or_none():
-        return False
 
-    social_result = await db.execute(
-        select(SocialClick.id).where(SocialClick.session_id == session_id).limit(1)
-    )
-    return social_result.scalar_one_or_none() is None
+# ============================================
+# OLD is_new_user FUNCTION REMOVED
+# ============================================
+# The old function had race conditions.
+# Now using is_new_user_atomic() from utils_session.py
+# which uses database PRIMARY KEY constraint for 100% reliability.
+# ============================================
+
 
 
 @router.get("/r/{code}")
@@ -212,7 +210,15 @@ async def log_scan(request: Request, db: AsyncSession = Depends(get_db)):
 
         # ✅ Create new scan record
         device_info = parse_device_info(user_agent)
-        is_new = await is_new_user(db, session_id)
+        
+        # ✅ ATOMIC check: Use database constraint to prevent phantom users
+        # This call will ALWAYS return the correct value, even with race conditions
+        is_new = await is_new_user_atomic(
+            db, 
+            session_id, 
+            action_type="qr_scan",
+            qr_code_id=qr_code_id
+        )
 
         # Get location data
         if latitude and longitude:

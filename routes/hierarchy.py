@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
@@ -60,9 +61,21 @@ async def create_region(
     
     new_region = Region(name=region.name, code=region.code)
     db.add(new_region)
-    await db.commit()
-    await db.refresh(new_region)
-    return new_region
+    try:
+        await db.commit()
+        await db.refresh(new_region)
+        return new_region
+    except IntegrityError as e:
+        await db.rollback()
+        # Check which field caused the duplicate
+        msg = str(e.orig)
+        if 'regions_code_key' in msg or 'unique constraint' in msg and 'code' in msg:
+            detail = 'Region code already exists'
+        elif 'regions_name_key' in msg or 'unique constraint' in msg and 'name' in msg:
+            detail = 'Region name already exists'
+        else:
+            detail = 'Duplicate region entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 @router.patch("/regions/{region_id}", response_model=RegionResponse)
 async def update_region(
@@ -83,10 +96,20 @@ async def update_region(
 
     for key, value in update_data.items():
         setattr(region, key, value)
-
-    await db.commit()
-    await db.refresh(region)
-    return region
+    try:
+        await db.commit()
+        await db.refresh(region)
+        return region
+    except IntegrityError as e:
+        await db.rollback()
+        msg = str(e.orig)
+        if 'regions_code_key' in msg or 'unique constraint' in msg and 'code' in msg:
+            detail = 'Region code already exists'
+        elif 'regions_name_key' in msg or 'unique constraint' in msg and 'name' in msg:
+            detail = 'Region name already exists'
+        else:
+            detail = 'Duplicate region entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 
 
@@ -135,9 +158,20 @@ async def create_cluster(
         region_id=cluster.region_id
     )
     db.add(new_cluster)
-    await db.commit()
-    await db.refresh(new_cluster)
-    return new_cluster
+    try:
+        await db.commit()
+        await db.refresh(new_cluster)
+        return new_cluster
+    except IntegrityError as e:
+        await db.rollback()
+        msg = str(e.orig)
+        if 'clusters_code' in msg and 'unique' in msg:
+            detail = 'Cluster code already exists in this region'
+        elif 'clusters_name' in msg and 'unique' in msg:
+            detail = 'Cluster name already exists in this region'
+        else:
+            detail = 'Duplicate cluster entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 @router.patch("/clusters/{cluster_id}", response_model=ClusterResponse)
 async def update_cluster(
@@ -164,10 +198,20 @@ async def update_cluster(
 
     for key, value in update_data.items():
         setattr(cluster, key, value)
-
-    await db.commit()
-    await db.refresh(cluster)
-    return cluster
+    try:
+        await db.commit()
+        await db.refresh(cluster)
+        return cluster
+    except IntegrityError as e:
+        await db.rollback()
+        msg = str(e.orig)
+        if 'clusters_code' in msg and 'unique' in msg:
+            detail = 'Cluster code already exists in this region'
+        elif 'clusters_name' in msg and 'unique' in msg:
+            detail = 'Cluster name already exists in this region'
+        else:
+            detail = 'Duplicate cluster entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 
 # ============================================
@@ -220,9 +264,20 @@ async def create_branch(
         cluster_id=branch.cluster_id
     )
     db.add(new_branch)
-    await db.commit()
-    await db.refresh(new_branch)
-    return new_branch
+    try:
+        await db.commit()
+        await db.refresh(new_branch)
+        return new_branch
+    except IntegrityError as e:
+        await db.rollback()
+        msg = str(e.orig)
+        if 'branches_code' in msg and 'unique' in msg:
+            detail = 'Branch code already exists in this cluster'
+        elif 'branches_name' in msg and 'unique' in msg:
+            detail = 'Branch name already exists in this cluster'
+        else:
+            detail = 'Duplicate branch entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 @router.patch("/branches/{branch_id}", response_model=BranchResponse)
 async def update_branch(
@@ -249,10 +304,20 @@ async def update_branch(
 
     for key, value in update_data.items():
         setattr(branch, key, value)
-
-    await db.commit()
-    await db.refresh(branch)
-    return branch
+    try:
+        await db.commit()
+        await db.refresh(branch)
+        return branch
+    except IntegrityError as e:
+        await db.rollback()
+        msg = str(e.orig)
+        if 'branches_code' in msg and 'unique' in msg:
+            detail = 'Branch code already exists in this cluster'
+        elif 'branches_name' in msg and 'unique' in msg:
+            detail = 'Branch name already exists in this cluster'
+        else:
+            detail = 'Duplicate branch entry'
+        raise HTTPException(status_code=400, detail=detail)
 
 
 @router.delete("/branches/{branch_id}")

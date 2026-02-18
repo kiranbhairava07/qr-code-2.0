@@ -1023,9 +1023,9 @@
         }
 
         try {
+          let res;
           if (currentEditId) {
-            // EDIT: Only update name and code (not region_id)
-            await fetch(`${API_BASE}/api/clusters/${currentEditId}`, {
+            res = await fetch(`${API_BASE}/api/clusters/${currentEditId}`, {
               method: "PATCH",
               headers: getHeaders(),
               body: JSON.stringify({ name, code }),
@@ -1039,12 +1039,23 @@
               showModalError("clusterError", "Please select a region");
               return;
             }
-
-            await fetch(`${API_BASE}/api/clusters`, {
+            res = await fetch(`${API_BASE}/api/clusters`, {
               method: "POST",
               headers: getHeaders(),
               body: JSON.stringify({ name, code, region_id }),
             });
+          }
+
+          if (!res.ok) {
+            let msg = "Failed to save cluster";
+            try {
+              const data = await res.json();
+              if (data && data.detail) {
+                msg = data.detail;
+              }
+            } catch {}
+            showModalError("clusterError", msg);
+            return;
           }
 
           closeClusterModal();
@@ -1232,9 +1243,9 @@
         }
 
         try {
+          let res;
           if (currentEditId) {
-            // EDIT: Only update name, code, location (not cluster_id)
-            await fetch(`${API_BASE}/api/branches/${currentEditId}`, {
+            res = await fetch(`${API_BASE}/api/branches/${currentEditId}`, {
               method: "PATCH",
               headers: getHeaders(),
               body: JSON.stringify({
@@ -1252,8 +1263,7 @@
               showModalError("branchError", "Please select a cluster");
               return;
             }
-
-            await fetch(`${API_BASE}/api/branches`, {
+            res = await fetch(`${API_BASE}/api/branches`, {
               method: "POST",
               headers: getHeaders(),
               body: JSON.stringify({
@@ -1263,6 +1273,18 @@
                 location: location || null,
               }),
             });
+          }
+
+          if (!res.ok) {
+            let msg = "Failed to save branch";
+            try {
+              const data = await res.json();
+              if (data && data.detail) {
+                msg = data.detail;
+              }
+            } catch {}
+            showModalError("branchError", msg);
+            return;
           }
 
           closeBranchModal();

@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
@@ -44,6 +47,7 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI app
+
 app = FastAPI(
     title="GK QR Code Manager",
     description="QR code management system with hierarchical analytics for GK Co-operative Society",
@@ -51,6 +55,24 @@ app = FastAPI(
     lifespan=lifespan,
     redoc_url="/api/redoc" if settings.ENVIRONMENT != "production" else None,
 )
+
+# Custom handler for validation errors (must be after app is defined)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Extract the first error for a concise message
+    first_error = exc.errors()[0] if exc.errors() else None
+    if first_error:
+        loc = ' -> '.join(str(l) for l in first_error.get('loc', []))
+        msg = first_error.get('msg', 'Invalid input')
+        detail = f"Validation error at {loc}: {msg}"
+    else:
+        detail = "Invalid request. Please check your input."
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": detail
+        }
+    )
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="templates"), name="static")
